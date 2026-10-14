@@ -446,7 +446,9 @@ bool ChecklistRenderer::drawTaskValue(Task &task, bool hideLabel) {
       }
       return changedValue;
     } else {
-      bool changedValue = ImGui::DatePicker(label, v.value);
+      // DatePicker prints its label verbatim, so no "##value" suffix here (the ID is
+      // unique through the surrounding ScopedId of the task).
+      bool changedValue = ImGui::DatePicker((hideLabel ? "##" : "") + task.name, v.value);
       if (ImGui::IsItemClicked(ImGuiMouseButton_Right) && !v.value.empty()) {
         v.value.clear();
         changedValue = true;
