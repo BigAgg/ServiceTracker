@@ -1,0 +1,12 @@
+build/
+build-*/
+out/
+output/
+release/
+.vs/
+.vscode/
+.idea/
+CMakeUserPresets.json
+installer/setup.iss
+*.bak
+compile_commands.json

@@ -1,0 +1,44 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": { "CMAKE_POLICY_VERSION_MINIMUM": "3.5" }
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows (Visual Studio, App + Tests)",
+      "inherits": "base",
+      "architecture": "x64",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": { "ST_BUILD_APP": "ON", "ST_BUILD_TESTS": "ON" }
+    },
+    {
+      "name": "core",
+      "displayName": "Core + Tests (jede Plattform, ohne GUI)",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ST_BUILD_APP": "OFF", "ST_BUILD_TESTS": "ON" }
+    },
+    {
+      "name": "check",
+      "displayName": "Core + Tests + App-Compile-Check (Linux CI)",
+      "inherits": "core",
+      "cacheVariables": { "ST_APP_COMPILE_CHECK": "ON", "ST_WARNINGS_AS_ERRORS": "ON" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows-release", "configurePreset": "windows", "configuration": "Release" },
+    { "name": "windows-debug", "configurePreset": "windows", "configuration": "Debug" },
+    { "name": "core", "configurePreset": "core" },
+    { "name": "check", "configurePreset": "check" }
+  ],
+  "testPresets": [
+    { "name": "windows", "configurePreset": "windows", "configuration": "Release", "output": { "outputOnFailure": true } },
+    { "name": "core", "configurePreset": "core", "output": { "outputOnFailure": true } },
+    { "name": "check", "configurePreset": "check", "output": { "outputOnFailure": true } }
+  ]
+}
