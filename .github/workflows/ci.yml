@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  linux:
+    name: Linux – Core-Tests, App-Compile-Check, UI-Smoke-Test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Configure
+        run: cmake --preset check
+      - name: Build
+        run: cmake --build --preset check
+      - name: Test
+        run: ctest --preset check
+
+  windows:
+    name: Windows – App + Tests (MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset windows
+      - name: Build
+        run: cmake --build --preset windows-release
+      - name: Test
+        run: ctest --preset windows
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ServiceTracker-windows
+          path: build/windows/app/Release/

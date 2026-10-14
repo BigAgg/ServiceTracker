@@ -100,3 +100,10 @@ TEST_CASE("settings: defaults, partial files and round trip") {
   test::writeText(dir / "broken.json", "[1,2]");
   CHECK_FALSE(config::loadSettings(dir / "broken.json").has_value());
 }
+
+TEST_CASE("settings: the shipped example file matches the defaults") {
+  const auto example = std::filesystem::path(ST_TEST_DATA_DIR) / ".." / ".." / "deploy" / "ServiceTracker.example.json";
+  auto loaded = config::loadSettings(example);
+  REQUIRE(loaded.has_value());
+  CHECK(*loaded == config::Settings{});
+}

@@ -43,6 +43,10 @@ include(Dependencies)
 # --------------------------------------------------------------------------------------
 # Targets
 # --------------------------------------------------------------------------------------
+if(ST_BUILD_TESTS)
+    enable_testing()
+endif()
+
 add_subdirectory(core)
 
 if(ST_BUILD_APP OR ST_APP_COMPILE_CHECK)
@@ -50,7 +54,6 @@ if(ST_BUILD_APP OR ST_APP_COMPILE_CHECK)
 endif()
 
 if(ST_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 

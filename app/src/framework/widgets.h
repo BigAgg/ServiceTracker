@@ -65,8 +65,7 @@ bool inputMultiline(const char *label, std::string &text, float minLines = 3.0f,
 /// Small "Heute" button that writes today's date (format "YYYY.MM.DD") into `date`.
 bool todayButton(const char *id, std::string &date, const std::string &today);
 
-/// Copies text to the clipboard and returns true when the item was right-clicked
-/// and "Kopieren" chosen (context menu for the last item).
+/// Right-click context menu "Kopieren" for the last item; copies `text` to the clipboard.
 void copyContextMenu(const char *id, const std::string &text);
 
 /// Selectable list of strings. Returns true when `selected` changed.

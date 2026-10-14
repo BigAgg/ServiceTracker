@@ -4,6 +4,8 @@
 
 #include <utils/filedialog.h>
 
+#include <iterator>
+
 #ifdef _WIN32
 #include <windows.h>
 #include <shellapi.h>

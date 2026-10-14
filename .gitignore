@@ -1,8 +1,8 @@
-build/
-build-*/
-out/
-output/
-release/
+/build/
+/build-*/
+/out/
+/output/
+/release/
 .vs/
 .vscode/
 .idea/
