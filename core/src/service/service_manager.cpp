@@ -59,8 +59,9 @@ std::optional<fs::path> ServiceManager::findChecklist(const devices::Device &dev
   std::vector<fs::path> folders;
   if (isExternalStatus(record.status) && record.activeService == service)
     folders.push_back(externCopyFor(device) / util::pathFromUtf8(service));
-  folders.push_back(syncFolderFor(device, service));
+  // same order as the legacy program: device folder first, then the sync folder
   folders.push_back(device.path / util::pathFromUtf8(service));
+  folders.push_back(syncFolderFor(device, service));
   for (const auto &folder : folders) {
     std::optional<fs::path> txt;
     for (const auto &file : util::listDirectory(folder, false, true)) {

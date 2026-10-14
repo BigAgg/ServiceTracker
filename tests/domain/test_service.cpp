@@ -159,6 +159,11 @@ TEST_CASE("in house service: complete workflow") {
   CHECK((*history)[0].totalPrice == doctest::Approx(150.5));
   CHECK((*history)[0].endDate == "2026.03.18");
 
+  // after finishing, the checklist is opened from the device folder
+  const auto afterFinish = m.findChecklist(f.device, "Service_2026.03.15", finished->record);
+  REQUIRE(afterFinish.has_value());
+  CHECK(afterFinish->parent_path() == serviceFolder);
+
   // sync list still contains the device as "erledigt"
   CHECK((*m.recordFor(f.device)).status == "erledigt");
   CHECK_FALSE(m.finishService(f.device, nullptr, html, f.ts.session).has_value());

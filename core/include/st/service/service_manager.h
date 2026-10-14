@@ -67,7 +67,7 @@ public:
   /// Record of the device from Sync.json, or a fresh record (not in the list).
   util::Result<ServiceRecord> recordFor(const devices::Device &device) const;
 
-  /// Checklist file of a service: local external copy, sync folder, service folder (in that order).
+  /// Checklist file of a service: local external copy, service folder, sync folder (in that order).
   std::optional<util::fs::path> findChecklist(const devices::Device &device, std::string_view service, const ServiceRecord &record) const;
 
   /// Starts an in house service for today.

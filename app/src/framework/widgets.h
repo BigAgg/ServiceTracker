@@ -1,0 +1,75 @@
+#pragma once
+
+#include <imgui.h>
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+/// Small reusable UI building blocks. Use them instead of repeating ImGui
+/// boilerplate in modules, so the program behaves the same everywhere.
+namespace st::app::ui {
+
+/// RAII BeginDisabled/EndDisabled.
+class Disabled {
+public:
+  explicit Disabled(bool disabled) : mDisabled(disabled) {
+    if (mDisabled)
+      ImGui::BeginDisabled();
+  }
+  ~Disabled() {
+    if (mDisabled)
+      ImGui::EndDisabled();
+  }
+  Disabled(const Disabled &) = delete;
+  Disabled &operator=(const Disabled &) = delete;
+
+private:
+  bool mDisabled;
+};
+
+/// RAII PushID/PopID.
+class ScopedId {
+public:
+  explicit ScopedId(const void *ptr) { ImGui::PushID(ptr); }
+  explicit ScopedId(const char *str) { ImGui::PushID(str); }
+  explicit ScopedId(int i) { ImGui::PushID(i); }
+  ~ScopedId() { ImGui::PopID(); }
+  ScopedId(const ScopedId &) = delete;
+  ScopedId &operator=(const ScopedId &) = delete;
+};
+
+/// Search input with hint, clear button ("x") and Ctrl+F focus when the window is focused.
+/// Returns true when the text changed.
+bool searchField(const char *id, std::string &text, const char *hint = "suchen... (Strg+F)");
+
+/// "(?)" marker with tooltip.
+void help(const char *text);
+
+/// Red hint text (validation messages).
+void errorText(std::string_view text);
+/// Muted hint text.
+void hintText(std::string_view text);
+
+/// Button that asks "Wirklich ...?" in a small popup. Returns true when confirmed.
+bool confirmButton(const char *label, const char *question, bool disabled = false);
+
+/// Color used for a device/service status.
+ImVec4 statusColor(std::string_view status);
+/// Status text in its color.
+void statusBadge(std::string_view status);
+
+/// Multiline input that grows with its content.
+bool inputMultiline(const char *label, std::string &text, float minLines = 3.0f, ImGuiInputTextFlags flags = 0);
+
+/// Small "Heute" button that writes today's date (format "YYYY.MM.DD") into `date`.
+bool todayButton(const char *id, std::string &date, const std::string &today);
+
+/// Copies text to the clipboard and returns true when the item was right-clicked
+/// and "Kopieren" chosen (context menu for the last item).
+void copyContextMenu(const char *id, const std::string &text);
+
+/// Selectable list of strings. Returns true when `selected` changed.
+bool listBox(const char *id, const std::vector<std::string> &items, std::string &selected, float heightInItems = 8.0f);
+
+} // namespace st::app::ui
