@@ -9,6 +9,10 @@
 #include <random>
 #include <thread>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 namespace st::util {
 
 namespace {
@@ -74,9 +78,17 @@ Status writeFileAtomic(const fs::path &path, std::string_view content, RetryPoli
   }
   for (int attempt = 0; attempt < std::max(1, retry.attempts); ++attempt) {
     ec.clear();
+#ifdef _WIN32
+    // Explicitly replace the target; fails while another process holds the file open
+    // without FILE_SHARE_DELETE, which is handled by the retry loop.
+    if (MoveFileExW(tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+      return {};
+    ec = std::error_code(static_cast<int>(GetLastError()), std::system_category());
+#else
     fs::rename(tmp, path, ec);
     if (!ec)
       return {};
+#endif
     std::this_thread::sleep_for(retry.delay);
   }
   std::error_code ignored;

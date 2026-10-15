@@ -31,6 +31,14 @@ jobs:
         run: cmake --build --preset windows-release
       - name: Test
         run: ctest --preset windows
+      - name: Report failing tests
+        if: failure()
+        shell: bash
+        run: |
+          # Surface the doctest output as annotation (readable via the GitHub API)
+          ./build/windows/tests/Release/st_tests.exe > test-output.txt 2>&1 || true
+          summary=$(grep -E "TEST CASE|ERROR|FATAL|values:|CHECK|REQUIRE|test cases" test-output.txt | head -80 | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
+          echo "::error title=Windows unit tests::${summary}"
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
