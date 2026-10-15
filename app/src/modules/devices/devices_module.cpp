@@ -13,6 +13,23 @@
 
 namespace st::app {
 
+///  Notification channel id - stored in the preferences, never rename
+constexpr const char *kAlertDevicesReceived = "devices.received";
+
+/// Everyone from TECHSUPPORT gets a notification as soon as a service is created
+alerts::Channel preparedChannel() {
+  alerts::Channel channel;
+  channel.id = kAlertDevicesReceived;
+  channel.label = "Reader eingetroffen";
+  channel.title = "ServiceTracker - Wareneingang";
+  channel.mode = alerts::Mode::PerItem; // Eine Meldung pro neuem Eintrag
+  channel.itemText = [](const alerts::Item &item) { return "Neuer Reader im Wareneingang" + item.label; };
+  channel.summaryText = [](std::size_t n) { return alerts::countSentence(n, "Reader", "Reader", "im Wareneingang"); };
+  channel.target = "Reader Control";
+  channel.audience = {std::string(users::groups::Techsupport)};
+  return channel;
+}
+
 void DevicesModule::init(AppContext &ctx) {
   ctx.ui.addWindow("Reader Control", [this, &ctx] { drawControl(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
   ctx.ui.addWindow("Reader Filewalker", [this, &ctx] { drawFilewalker(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -31,6 +48,7 @@ void DevicesModule::init(AppContext &ctx) {
     if (!mBrowsePath.empty())
       mEntries = util::listDirectory(mBrowsePath);
   });
+  ctx.alerts.addChannel(ctx, preparedChannel());
 }
 
 void DevicesModule::refilter(AppContext &ctx) {
