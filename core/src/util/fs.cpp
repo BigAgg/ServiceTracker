@@ -1,11 +1,14 @@
 #include "st/util/fs.h"
 
+#include "st/util/log.h"
 #include "st/util/time.h"
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <format>
 #include <fstream>
+#include <optional>
 #include <random>
 #include <thread>
 
@@ -55,6 +58,29 @@ Result<std::string> readFile(const fs::path &path, RetryPolicy retry) {
   return std::unexpected(makeError("Datei kann nicht gelesen werden", path));
 }
 
+namespace {
+
+/// Other users detect changes by the modification time (lastWriteTime). Two saves
+/// within the timestamp resolution of the file system (Windows ~ms, network shares up
+/// to 2 s) would leave the time unchanged and the second change unnoticed. The new
+/// file therefore always gets a time later than the file it replaces.
+void ensureNewerWriteTime(const fs::path &tmp, const std::optional<fs::file_time_type> &previous) {
+  if (!previous)
+    return;
+  std::error_code ec;
+  if (fs::last_write_time(tmp, ec) > *previous || ec)
+    return;
+  using namespace std::chrono_literals;
+  for (const auto step : {std::chrono::nanoseconds(1ms), std::chrono::nanoseconds(10ms), std::chrono::nanoseconds(1s), std::chrono::nanoseconds(2s)}) {
+    fs::last_write_time(tmp, *previous + std::chrono::duration_cast<fs::file_time_type::duration>(step), ec);
+    if (!ec && fs::last_write_time(tmp, ec) > *previous && !ec)
+      return;
+  }
+  log::warning("Änderungszeit von {} konnte nicht erhöht werden", pathToUtf8(tmp));
+}
+
+} // namespace
+
 Status writeFileAtomic(const fs::path &path, std::string_view content, RetryPolicy retry) {
   std::error_code ec;
   if (path.has_parent_path() && !fs::exists(path.parent_path(), ec)) {
@@ -62,6 +88,10 @@ Status writeFileAtomic(const fs::path &path, std::string_view content, RetryPoli
     if (ec)
       return std::unexpected(makeError("Ordner kann nicht erstellt werden", path.parent_path(), ec));
   }
+  std::optional<fs::file_time_type> previous;
+  if (const auto time = fs::last_write_time(path, ec); !ec)
+    previous = time;
+  ec.clear();
   fs::path tmp = path;
   tmp += uniqueSuffix();
   {
@@ -76,6 +106,7 @@ Status writeFileAtomic(const fs::path &path, std::string_view content, RetryPoli
       return std::unexpected(makeError("Schreiben fehlgeschlagen", tmp));
     }
   }
+  ensureNewerWriteTime(tmp, previous); // rename keeps the time of the temp file
   for (int attempt = 0; attempt < std::max(1, retry.attempts); ++attempt) {
     ec.clear();
 #ifdef _WIN32

@@ -4,6 +4,10 @@
 #include "st/util/json.h"
 #include "test_helpers.h"
 
+#include <chrono>
+#include <filesystem>
+#include <string>
+
 using namespace st;
 using namespace st::util;
 
@@ -40,6 +44,28 @@ TEST_CASE("lastWriteTime is zero for missing files and changes on write") {
   REQUIRE(writeFileAtomic(file, "1"));
   CHECK(lastWriteTime(file) != 0);
   CHECK_FALSE(lastWriteTimeString(file).empty());
+}
+
+TEST_CASE("every write gets a newer modification time (coarse timestamps, clock skew)") {
+  test::TempDir dir;
+  const auto file = dir / "list.json";
+  REQUIRE(writeFileAtomic(file, "0"));
+
+  // Many writes in a row: each one must be detectable by other users
+  std::int64_t previous = lastWriteTime(file);
+  for (int i = 1; i <= 20; ++i) {
+    REQUIRE(writeFileAtomic(file, std::to_string(i % 2))); // same size every time
+    const std::int64_t current = lastWriteTime(file);
+    CHECK(current > previous);
+    previous = current;
+  }
+
+  // File written by a PC whose clock is ahead (or a share with coarse time stamps)
+  const auto future = std::filesystem::last_write_time(file) + std::chrono::hours(1);
+  std::filesystem::last_write_time(file, future);
+  REQUIRE(writeFileAtomic(file, "x"));
+  CHECK(std::filesystem::last_write_time(file) > future);
+  CHECK(test::readText(file) == "x");
 }
 
 TEST_CASE("copyTree merges directories") {
