@@ -3,6 +3,7 @@
 #include "framework/platform.h"
 #include "framework/widgets.h"
 
+#include <st/alerts/alert_center.h>
 #include <st/exporting/reports.h>
 #include <st/exporting/xlsx.h>
 #include <st/users/user_store.h>
@@ -20,6 +21,20 @@ using orders::OrderState;
 namespace {
 constexpr const char *kWindow = "Bestellungen";
 constexpr const char *kDateFormat = "%Y.%m.%d";
+/// Notification channel id – stored in the preferences, never rename.
+constexpr const char *kAlertPrepared = "orders.prepared";
+
+/// Sales gets a notification as soon as an order is ready for shipping.
+alerts::Channel preparedChannel() {
+  alerts::Channel channel;
+  channel.id = kAlertPrepared;
+  channel.label = "Bestellungen versandbereit";
+  channel.title = "ServiceTracker - Bestellungen";
+  channel.target = kWindow;
+  channel.audience = {std::string(users::groups::Sales)};
+  channel.summaryText = [](std::size_t count) { return alerts::countSentence(count, "Bestellung", "Bestellungen", "versandbereit"); };
+  return channel;
+}
 
 ImVec4 stateColor(OrderState state) {
   switch (state) {
@@ -76,6 +91,7 @@ void OrdersModule::init(AppContext &ctx) {
   ctx.notify.check(mStore.load(), "Bestellungen laden");
   mPoll.setInterval(std::chrono::milliseconds(std::max(500, ctx.settings().refreshIntervalMs)));
   ctx.ui.addWindow(kWindow, [this, &ctx] { drawWindow(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
+  ctx.alerts.addChannel(ctx, preparedChannel());
   updateAttention(ctx);
 }
 
@@ -90,13 +106,22 @@ void OrdersModule::update(AppContext &ctx) {
 }
 
 void OrdersModule::updateAttention(AppContext &ctx) {
-  // Orders ready for shipping need attention (legacy behaviour)
-  ctx.ui.setAttention(kWindow, mStore.countInState(OrderState::Prepared) > 0);
+  // Orders ready for shipping need attention (legacy behaviour) and notify sales
+  const auto prepared = mStore.idsInState(OrderState::Prepared);
+  ctx.ui.setAttention(kWindow, !prepared.empty());
+  std::vector<alerts::Item> items;
+  items.reserve(prepared.size());
+  for (const auto id : prepared) {
+    const Order *order = mStore.find(id);
+    items.push_back({std::to_string(id), order ? order->orderNumber + " (" + order->customer + ")" : std::to_string(id)});
+  }
+  ctx.alerts.report(kAlertPrepared, items);
 }
 
 void OrdersModule::save(AppContext &ctx, Order order) {
   auto stored = mStore.upsert(std::move(order), ctx.session());
   if (ctx.notify.check(stored, "Bestellung speichern")) {
+    ctx.alerts.markSeen(kAlertPrepared, std::to_string(stored->id)); // own change is no news
     mSearchResult = mStore.search(mSearch);
     updateAttention(ctx);
   }

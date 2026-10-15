@@ -209,6 +209,7 @@ ctx.ui.setAttention("Name", true);   // Punkt im Fenster-Tab (z.B. "ungespeicher
 | `ctx.checklist()` | geöffnete Checkliste (`doc`, `dirty`, `markDirty()`) |
 | `ctx.statusIndex()` | Status aller Geräte aus `Sync.json` |
 | `ctx.notify` | Rückmeldungen: `info/success/warning/error`, `check(result, "Kontext")` |
+| `ctx.alerts` | Windows-Benachrichtigungen + roter Punkt: `addChannel`, `report`, `markSeen` ([benachrichtigungen.md](benachrichtigungen.md)) |
 | `ctx.displayTime(ts)` | Zeitstempel im gewählten Format |
 
 ### Ereignisse (`ctx.events`)

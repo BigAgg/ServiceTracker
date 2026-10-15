@@ -40,6 +40,7 @@ Voraussetzungen und Details: [docs/build.md](docs/build.md).
 - [Modul-Referenz (alle Fenster und Funktionen)](docs/module-referenz.md)
 - [Dateiformate & Kompatibilität](docs/dateiformate.md)
 - [Konfiguration (ServiceTracker.json)](docs/konfiguration.md)
+- [Benachrichtigungen](docs/benachrichtigungen.md)
 - [Tests](docs/tests.md)
 - [Release & Installer](docs/release.md)
 - [Änderungen gegenüber Version 1](docs/migration.md)

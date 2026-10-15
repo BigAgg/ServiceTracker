@@ -9,6 +9,15 @@ using namespace st::config;
 TEST_CASE("preferences: defaults, legacy checklist.bin and round trip") {
   test::TempDir dir;
   CHECK(loadPreferences(dir / "prefs.json") == Preferences{});
+  CHECK(Preferences{}.desktopNotifications);
+  CHECK(Preferences{}.taskbarBadge);
+
+  // Files of older versions without the notification keys keep the defaults
+  test::writeText(dir / "old.json", R"({"germanDates":true})");
+  const auto old = loadPreferences(dir / "old.json");
+  CHECK(old.germanDates);
+  CHECK(old.desktopNotifications);
+  CHECK(old.mutedAlerts.empty());
 
   test::writeText(dir / "checklist.bin", std::string("\0\1\1\0", 4));
   const auto legacy = loadPreferences(dir / "prefs.json", dir / "checklist.bin");
@@ -19,6 +28,9 @@ TEST_CASE("preferences: defaults, legacy checklist.bin and round trip") {
 
   Preferences p;
   p.ordersAsPopup = true;
+  p.desktopNotifications = false;
+  p.taskbarBadge = false;
+  p.mutedAlerts = {"orders.prepared"};
   p.rememberDevice("a");
   p.rememberDevice("b");
   p.rememberDevice("a");

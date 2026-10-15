@@ -23,6 +23,8 @@ Ausführliche Erklärung mit Beispielcode: `docs/module.md`. Kurzfassung:
    - Dialoge aus Menüs in `drawOverlay()`.
    - UI-Bausteine aus `framework/widgets.h` verwenden, IDs mit `ui::ScopedId`.
    - Eingabefelder brauchen über Frames lebende Puffer (Member), nie temporäre Kopien.
+   - Soll eine Abteilung benachrichtigt werden: Kanal mit `ctx.alerts.addChannel` in `init()`,
+     offene Einträge mit `ctx.alerts.report` melden (`docs/benachrichtigungen.md`).
    - Auswahl über `ctx.selectDevice/selectService`, Ergebnisse von Service-Aktionen über
      `ctx.applyRecord`, Fehler über `ctx.notify.check`.
 4. **Registrieren** in `app/src/modules/register_modules.cpp` (Reihenfolge = Init-Reihenfolge).

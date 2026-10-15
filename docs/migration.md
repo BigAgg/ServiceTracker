@@ -23,6 +23,8 @@ Beide Versionen können während der Umstellung parallel benutzt werden.
 - Bestellungen: „Nächster Schritt“, „Heute“-Buttons, Status farbig mit Anzahl, Bearbeitung
   mehrerer Benutzer wird zusammengeführt.
 - Benutzer- und Config-Verwaltung als eigene Dialoge mit Suche.
+- **Benachrichtigungen** (neu): `SALES` erhält eine Windows-Benachrichtigung und einen roten
+  Punkt in der Taskleiste, sobald Bestellungen versandbereit sind ([benachrichtigungen.md](benachrichtigungen.md)).
 - Alle Pfade über `ServiceTracker.json` konfigurierbar (Testumgebungen ohne `Y:`).
 
 ## Behobene Fehler aus Version 1

@@ -6,6 +6,7 @@
 ┌──────────────────────────── app (ServiceTracker.exe) ─────────────────────────────┐
 │  main.cpp ── AppContext ── ModuleRegistry ── Module (je Feature)                  │
 │                 │  UiHost (Fenster/Menüs) · EventBus · Notifications · Preferences│
+│                 │  Alerts (Windows-Benachrichtigungen, roter Punkt Taskleiste)    │
 │                 │  aktive Auswahl (Gerät, Service) · geöffnete Checkliste         │
 ├─────────────────┴──────────────────── st_core ────────────────────────────────────┤
 │ util      Strings, Zeit, Dateisystem (atomar + Retry), JSON, Logging, Session     │
@@ -14,6 +15,7 @@
 │ service   Sync.json/extern.json, History, ServiceManager (Workflows), Filter      │
 │ orders    Bestellungen                users  users.bin + Berechtigungen           │
 │ changes   Änderungswünsche            config ServiceTracker.json, Preferences     │
+│ alerts    Benachrichtigungen: Kanäle, Neu-Erkennung, Stummschalten                │
 │ exporting Excel (libxlsxwriter), Berichte                                         │
 └───────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -46,6 +48,8 @@ Logik ohne GUI testbar und Fehler in Dateiformaten fallen in der CI auf.
   - `EventBus`: typisierte Ereignisse (`framework/events.h`) zwischen Modulen.
   - `widgets`: wiederverwendbare UI-Bausteine (Suchfeld, Bestätigungs-Button, Status-Farben…).
   - `platform`: Explorer/Datei öffnen (Unicode), Dateidialoge.
+  - `Alerts` / `DesktopNotifier`: Benachrichtigungen der Module an Windows weitergeben
+    (siehe [benachrichtigungen.md](benachrichtigungen.md)).
 - `modules/` – je Feature ein Ordner (siehe [module.md](module.md)).
 
 ## Datenfluss beim Arbeiten
@@ -88,3 +92,4 @@ Alle gemeinsam genutzten Dateien liegen auf dem Netzlaufwerk. Dafür gilt:
 | Neue Hardware-Option | `devices::kFlags` | `LTS` |
 | Neuer Status | `service::status` | `geplant extern` |
 | Kommunikation zwischen Modulen | `framework/events.h` | `RecordsChanged` |
+| Windows-Benachrichtigung | `ctx.alerts.addChannel(...)` + `report(...)` | `orders.prepared` |

@@ -42,7 +42,9 @@ Für Tests mit Kopien der Daten genügt es, `paths` auf einen lokalen Ordner zu 
 ## preferences.json (pro Benutzer/Rechner)
 
 Wird vom Programm im Programmordner geschrieben (Menü *Einstellungen*): Anzeigeoptionen der
-Checkliste, Liste der zuletzt verwendeten Geräte, Darstellung der Bestellungen. Beim ersten
+Checkliste, Liste der zuletzt verwendeten Geräte, Darstellung der Bestellungen,
+Benachrichtigungen (`desktopNotifications`, `taskbarBadge`, `mutedAlerts` = abgeschaltete
+Kanal-IDs, siehe [benachrichtigungen.md](benachrichtigungen.md)). Beim ersten
 Start werden die Einstellungen aus `checklist.bin` (Version 1) übernommen.
 
 ## Fensterlayout

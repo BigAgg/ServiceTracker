@@ -47,6 +47,7 @@ Wichtige Invarianten:
 - **Fensternamen nie ändern** (Docking-Layout `imgui.ini` der Benutzer hängt daran).
 - **Namen von Expressions und Section Actions nie ändern** (stehen in Checklisten-Dateien).
 - **Status-Texte** (`service::status`) und **Flag-Bitwerte** (`devices::ConfigFlag`) nie ändern.
+- **Kanal-IDs der Benachrichtigungen** (`alerts::Channel::id`) nie ändern (stehen in `preferences.json`).
 - Zeitstempel immer über `util::Session` (testbar), Format `JJJJ-MM-TT hh:mm:ss`.
 - Pfade intern UTF-8, Umwandlung nur mit `util::pathFromUtf8`/`util::pathToUtf8`.
 - Netzlaufwerk nicht jedes Frame lesen – `PollTimer` in `update()`.

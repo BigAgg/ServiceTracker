@@ -18,6 +18,7 @@ Berechtigungsgruppen (Benutzerverwaltung): `SERVICE_CREATOR`, `SERVICE_CREATOR_E
 | Fertiggemeldet / Berechtigungen ignorieren | nur Poweruser: alles bearbeitbar |
 | Erwartete und erledigte Geräte anzeigen | Reader Control ohne Filter zeigt sonst nur Geräte in Arbeit |
 | Bestellungen als Popup öffnen | Darstellung im Fenster „Bestellungen“ |
+| Benachrichtigungen | Windows-Benachrichtigungen, roter Punkt, je Art an/aus + „Testen“ (nur für Empfänger, siehe [benachrichtigungen.md](benachrichtigungen.md)) |
 | Pfade | zeigt alle konfigurierten Pfade, Klick öffnet den Ordner |
 | Log-Datei / Anleitung öffnen | `run.log`, `Anleitung.pdf` |
 
@@ -117,6 +118,9 @@ Stellt bereit: Expressions `@rinfo.readerinfo.*`, `@rinfo.config.<flag>`, `@rinf
 
 - Status-Gruppen farbig mit Anzahl; Fenster-Tab markiert, solange Bestellungen
   „Versandbereit“ sind.
+- `SALES`: Windows-Benachrichtigung „Es sind *n* Bestellungen versandbereit“, sobald eine
+  Bestellung versandbereit wird und beim Start; roter Punkt in der Taskleiste, solange
+  Bestellungen versandbereit sind ([benachrichtigungen.md](benachrichtigungen.md)).
 - Bestellung anlegen (`TECHSUPPORT`): Kunde (bekannte Kunden + bisherige), Bestellnummer,
   Eingangsdatum (vorbelegt mit heute), Express.
 - Bearbeiten: Datumsfelder mit „Heute“, **Nächster Schritt** trägt das heutige Datum beim

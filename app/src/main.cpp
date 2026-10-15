@@ -1,4 +1,5 @@
 #include "framework/app_context.h"
+#include "framework/desktop_notifier.h"
 #include "framework/module.h"
 #include "framework/platform.h"
 
@@ -90,6 +91,7 @@ int main(int argc, char *argv[]) {
     st::app::AppContext ctx(*settings, st::util::currentUserName(), workingDir);
     if (!settingsError.empty())
       ctx.notify.error("ServiceTracker.json fehlerhaft, Standardwerte aktiv: " + settingsError);
+    ctx.alerts.setNotifier(st::app::DesktopNotifier::create());
     ctx.initialize();
 
     st::app::ModuleRegistry modules;
@@ -101,7 +103,7 @@ int main(int argc, char *argv[]) {
       modules.updateAll(ctx);
       app::BeginDrawing();
       modules.drawOverlays(ctx);
-      ctx.notify.draw();
+      ctx.drawOverlay();
       app::EndDrawing();
     }
 

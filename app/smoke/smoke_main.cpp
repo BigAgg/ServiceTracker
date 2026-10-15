@@ -6,6 +6,7 @@
 // own assertions (Begin/End, ID stack, popups ...) abort the test on misuse, and
 // any error message of the program counts as a failure.
 #include "framework/app_context.h"
+#include "framework/desktop_notifier.h"
 #include "framework/module.h"
 #include "modules/changes/changes_module.h"
 #include "modules/checklist/checklist_module.h"
@@ -20,6 +21,7 @@
 
 #include <st/checklist/actions.h>
 #include <st/checklist/formats.h>
+#include <st/orders/order_store.h>
 #include <st/users/user_store.h>
 #include <st/util/json.h>
 #include <st/util/log.h>
@@ -159,12 +161,15 @@ int main() {
   {
     app::AppContext ctx(settings, "smoketest", root / "work");
     fs::create_directories(root / "work");
+    auto notifierOwner = std::make_unique<app::RecordingNotifier>();
+    auto &notifier = *notifierOwner;
+    ctx.alerts.setNotifier(std::move(notifierOwner));
     ctx.initialize();
     SMOKE_CHECK(ctx.isPoweruser());
     SMOKE_CHECK(ctx.deviceRegistry.size() == 2);
 
     app::ModuleRegistry modules;
-    modules.add<app::GeneralModule>();
+    auto &generalModule = modules.add<app::GeneralModule>();
     modules.add<app::DevicesModule>();
     modules.add<app::ServiceModule>();
     modules.add<app::ChecklistModule>();
@@ -184,7 +189,7 @@ int main() {
         ImGui::NewFrame();
         WindowControl::Get().DrawWindows();
         modules.drawOverlays(ctx);
-        ctx.notify.draw();
+        ctx.drawOverlay();
         ImGui::Render();
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
       }
@@ -202,7 +207,7 @@ int main() {
           ImGui::NewFrame();
           WindowControl::Get().DrawWindows();
           modules.drawOverlays(ctx);
-          ctx.notify.draw();
+          ctx.drawOverlay();
           ImGui::Render();
           if (std::getenv("SMOKE_VERBOSE") && GImGui->HoveredWindow)
             hovered.insert(GImGui->HoveredWindow->RootWindow->Name);
@@ -230,6 +235,74 @@ int main() {
         ++i;
       }
       ImGui::Render();
+    }
+
+    std::puts("frames: notifications");
+    {
+      // Start: one order is ready for shipping -> Windows notification + red dot
+      SMOKE_CHECK(ctx.alerts.subscribed("orders.prepared"));
+      SMOKE_CHECK(notifier.shown.size() == 1);
+      if (!notifier.shown.empty()) {
+        SMOKE_CHECK(notifier.shown[0].title == "ServiceTracker - Bestellungen");
+        SMOKE_CHECK(notifier.shown[0].body == "Es ist 1 Bestellung versandbereit");
+      }
+      SMOKE_CHECK(notifier.badge);
+      SMOKE_CHECK(notifier.tooltip.find("Es ist 1 Bestellung versandbereit") != std::string::npos);
+
+      // Click on the notification focuses the orders window
+      notifier.activation = app::DesktopNotifier::Activation{"orders.prepared"};
+      frames(2);
+      SMOKE_CHECK(GImGui->NavWindow && std::string(GImGui->NavWindow->RootWindow->Name).starts_with("Bestellungen"));
+
+      // Another user prepares an order -> new notification with the total count
+      util::FixedClock clock(util::makeLocalTime(2026, 2, 1, 9, 0, 0));
+      util::Session other("kollege", clock);
+      orders::OrderStore store(root / "orders.json");
+      SMOKE_CHECK(store.load().has_value());
+      orders::Order order;
+      order.orderNumber = "ORD-2";
+      order.customer = "BMG DE";
+      order.entryDate = "2026.01.20";
+      order.bookedDate = "2026.01.21";
+      order.preparedDate = "2026.01.22";
+      SMOKE_CHECK(store.upsert(order, other).has_value());
+      std::this_thread::sleep_for(std::chrono::milliseconds(600));
+      frames(3);
+      SMOKE_CHECK(notifier.shown.size() == 2);
+      if (notifier.shown.size() == 2)
+        SMOKE_CHECK(notifier.shown[1].body == "Es sind 2 Bestellungen versandbereit");
+
+      // Program in front: the message stays inside the program
+      notifier.foreground = true;
+      order.id = 0;
+      order.orderNumber = "ORD-3";
+      SMOKE_CHECK(store.upsert(order, other).has_value());
+      std::this_thread::sleep_for(std::chrono::milliseconds(600));
+      frames(3);
+      SMOKE_CHECK(notifier.shown.size() == 2);
+      notifier.foreground = false;
+
+      // Muted channel: no red dot
+      ctx.prefs().mutedAlerts = {"orders.prepared"};
+      std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+      frames(2);
+      SMOKE_CHECK(!notifier.badge);
+      ctx.prefs().mutedAlerts.clear();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+      frames(2);
+      SMOKE_CHECK(notifier.badge);
+
+      // Settings menu incl. "Benachrichtigungen" (rendered in a plain window)
+      for (int i = 0; i < 3; ++i) {
+        ImGui::NewFrame();
+        ImGui::Begin("Smoke Einstellungen");
+        generalModule.drawMenu(ctx);
+        ImGui::End();
+        ImGui::Render();
+      }
+      const auto shownBefore = notifier.shown.size();
+      ctx.alerts.showTest(ctx, "orders.prepared");
+      SMOKE_CHECK(notifier.shown.size() == shownBefore + 1);
     }
 
     std::puts("frames: device selected");

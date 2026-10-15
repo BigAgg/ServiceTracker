@@ -1,7 +1,9 @@
 #pragma once
 
+#include "framework/alerts.h"
 #include "framework/event_bus.h"
 #include "framework/notifications.h"
+#include "framework/poll_timer.h"
 #include "framework/ui_host.h"
 
 #include <st/checklist/actions.h>
@@ -20,25 +22,6 @@
 #include <string>
 
 namespace st::app {
-
-/// Fires at most every `interval` (used to throttle polling of network files).
-class PollTimer {
-public:
-  explicit PollTimer(std::chrono::milliseconds interval = std::chrono::milliseconds(1000)) : mInterval(interval) {}
-  void setInterval(std::chrono::milliseconds interval) { mInterval = interval; }
-  bool due() {
-    const auto now = std::chrono::steady_clock::now();
-    if (now - mLast < mInterval)
-      return false;
-    mLast = now;
-    return true;
-  }
-  void reset() { mLast = {}; }
-
-private:
-  std::chrono::milliseconds mInterval;
-  std::chrono::steady_clock::time_point mLast{};
-};
 
 /// The checklist currently opened for the selected service. Shared by the
 /// checklist, service and extern modules.
@@ -65,8 +48,11 @@ public:
   /// Loads users, configs, devices and the service list. Problems are reported as
   /// notifications instead of aborting the program.
   void initialize();
-  /// Polls shared files (throttled). Call once per frame.
+  /// Polls shared files (throttled) and delivers notifications. Call once per frame.
   void update();
+  /// Framework parts drawn inside the ImGui frame after the modules (toasts, status
+  /// line, focus requests of clicked notifications). Call once per frame.
+  void drawOverlay();
 
   // --- configuration & identity -----------------------------------------------
   const config::Settings &settings() const { return mSettings; }
@@ -89,6 +75,8 @@ public:
   UiHost ui;
   EventBus events;
   Notifications notify;
+  /// Desktop notifications and taskbar badge (see docs/benachrichtigungen.md).
+  Alerts alerts;
 
   // --- data -------------------------------------------------------------------
   st::users::UserStore userStore;

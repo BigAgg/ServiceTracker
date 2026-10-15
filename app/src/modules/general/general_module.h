@@ -10,8 +10,13 @@ public:
   std::string_view name() const override { return "general"; }
   void init(AppContext &ctx) override;
 
-private:
+  /// Content of the menu (public for the smoke test, which renders it in a window).
   void drawMenu(AppContext &ctx);
+
+private:
+  /// "Benachrichtigungen" section (only for users that receive any channel).
+  /// Returns true if a preference changed.
+  bool drawNotificationSettings(AppContext &ctx);
 };
 
 } // namespace st::app

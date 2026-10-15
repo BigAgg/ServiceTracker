@@ -64,12 +64,18 @@ void AppContext::initialize() {
 }
 
 void AppContext::update() {
+  alerts.update(*this);
   if (!mSyncAvailable || !mSyncPoll.due())
     return;
   const auto writeTime = services().environment().syncStore.lastWriteTime();
   if (writeTime != mSyncWriteTime)
     reloadRecords();
   notify.setStatusLine(user() + (isPoweruser() ? " (Poweruser)" : "") + "  |  Sync " + util::formatTimestamp(mSession.now()).substr(11));
+}
+
+void AppContext::drawOverlay() {
+  alerts.drawFrame(*this);
+  notify.draw();
 }
 
 void AppContext::savePrefs() {

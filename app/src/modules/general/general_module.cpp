@@ -7,10 +7,43 @@
 
 #include <imgui.h>
 
+#include <algorithm>
+
 namespace st::app {
 
 void GeneralModule::init(AppContext &ctx) {
   ctx.ui.addMenu("Einstellungen", [this, &ctx] { drawMenu(ctx); });
+}
+
+bool GeneralModule::drawNotificationSettings(AppContext &ctx) {
+  const auto channels = ctx.alerts.center().channels();
+  if (channels.empty())
+    return false; // the user receives no notifications
+  auto &prefs = ctx.prefs();
+  bool changed = false;
+  ImGui::SeparatorText("Benachrichtigungen");
+  changed |= ImGui::Checkbox("Windows-Benachrichtigungen", &prefs.desktopNotifications);
+  ui::help("Ist ServiceTracker im Vordergrund, erscheint die Meldung nur im Programm.\n"
+           "Ein Klick auf die Benachrichtigung öffnet ServiceTracker.");
+  changed |= ImGui::Checkbox("Roter Punkt in der Taskleiste", &prefs.taskbarBadge);
+  ui::help("Wird nur bei großen Taskleisten-Schaltflächen angezeigt (Windows-Einstellung).");
+  for (const auto *channel : channels) {
+    ui::ScopedId scope(channel->id.c_str());
+    const bool muted = std::find(prefs.mutedAlerts.begin(), prefs.mutedAlerts.end(), channel->id) != prefs.mutedAlerts.end();
+    bool enabled = !muted;
+    if (ImGui::Checkbox(channel->label.c_str(), &enabled)) {
+      if (enabled)
+        std::erase(prefs.mutedAlerts, channel->id);
+      else
+        prefs.mutedAlerts.push_back(channel->id);
+      changed = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Testen"))
+      ctx.alerts.showTest(ctx, channel->id);
+    ImGui::SetItemTooltip("Zeigt die Benachrichtigung mit dem aktuellen Stand an");
+  }
+  return changed;
 }
 
 void GeneralModule::drawMenu(AppContext &ctx) {
@@ -33,6 +66,7 @@ void GeneralModule::drawMenu(AppContext &ctx) {
     prefs.recentDevices.clear();
     changed = true;
   }
+  changed |= drawNotificationSettings(ctx);
   if (changed) {
     prefs.restrictTo(ctx.isPoweruser());
     ctx.savePrefs();

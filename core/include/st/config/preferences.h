@@ -22,6 +22,12 @@ struct Preferences {
   bool showClosedDevices = false;
   /// Orders are opened as popup instead of inline tree nodes.
   bool ordersAsPopup = false;
+  /// Show Windows notifications (otherwise only messages inside the program).
+  bool desktopNotifications = true;
+  /// Red dot on the taskbar icon while notifications are pending.
+  bool taskbarBadge = true;
+  /// Ids of notification channels the user switched off (alerts::Channel::id).
+  std::vector<std::string> mutedAlerts;
   /// Recently selected devices (newest first).
   std::vector<std::string> recentDevices;
 
