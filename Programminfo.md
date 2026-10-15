@@ -32,3 +32,20 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
 - In den versand gestellt und datum eingetragen
 - Versendet und Rechnungsnummer sowie versanddatum werden eingetragen
 - Bestellung wird abgeschlossen
+
+## Neuimplementierungen:
+
+### Notification für TechSupport
+
+- Selbe notification wie in Bestellungen für Sales.
+- Alert ist bereits angelegt in device_module.cpp
+- Aufruf nur, wenn ein Gerät neu in der Liste erscheint und den Status "im Wareneingang" hat.
+- An alle in der TECHSUPPORT gruppe
+
+## Designänderungen:
+
+- In Bestellungen:
+    - Wenn "Als Popup öffnen" aus
+        - Zeige Farbliche Trennung zwischen den einzelnen Bestellungen
+        - Jede 2. Bestellung farblich hervorgehoben
+        - Wenn die Bestellung aufgeklappt ist, übernehme die Farbliche hervorhebung

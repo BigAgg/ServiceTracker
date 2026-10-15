@@ -17,6 +17,7 @@ Dafür soll das bestehende Programm neu geschrieben werden.
 * Wording im Code auf englisch aber dokumentationen auf deutsch
 * Lege viel wert auf kleine features die die bedienung einfacher machen
 * Neuimplementierungen in "Programminfo.md" selbständig umsetzen und danach aus Programminfo.md löschen
+* Designänderungen in "Programminfo.md" selbständig umsetzen und danach aus Programminfo.md löschen
 
 ## Struktur
 
