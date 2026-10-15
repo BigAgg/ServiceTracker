@@ -28,11 +28,22 @@ jobs:
       - name: Configure
         run: cmake --preset windows
       - name: Build
-        run: cmake --build --preset windows-release
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          cmake --build --preset windows-release 2>&1 | tee build-output.txt
+      - name: Report build errors
+        if: failure() && steps.build.outcome == 'failure'
+        shell: bash
+        run: |
+          # Surface compiler/linker errors as annotation (readable via the GitHub API)
+          summary=$(grep -E "error [A-Z]+[0-9]+|fatal error|unresolved external" build-output.txt | sort -u | head -40 | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
+          echo "::error title=Windows build::${summary}"
       - name: Test
         run: ctest --preset windows
       - name: Report failing tests
-        if: failure()
+        if: failure() && hashFiles('build/windows/tests/Release/st_tests.exe') != ''
         shell: bash
         run: |
           # Surface the doctest output as annotation (readable via the GitHub API)
