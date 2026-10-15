@@ -3,13 +3,13 @@
 ## Überblick
 
 ```
-┌──────────────────────────── app (ServiceTracker.exe) ────────────────────────────┐
+┌──────────────────────────── app (ServiceTracker.exe) ─────────────────────────────┐
 │  main.cpp ── AppContext ── ModuleRegistry ── Module (je Feature)                  │
 │                 │  UiHost (Fenster/Menüs) · EventBus · Notifications · Preferences│
-│                 │  aktive Auswahl (Gerät, Service) · geöffnete Checkliste          │
-├─────────────────┴──────────────────── st_core ──────────────────────────────────┤
-│ util      Strings, Zeit, Dateisystem (atomar + Retry), JSON, Logging, Session    │
-│ checklist Modell, TXT/JSON-Format, Merge, Dokument, Expressions/Actions, Export  │
+│                 │  aktive Auswahl (Gerät, Service) · geöffnete Checkliste         │
+├─────────────────┴──────────────────── st_core ────────────────────────────────────┤
+│ util      Strings, Zeit, Dateisystem (atomar + Retry), JSON, Logging, Session     │
+│ checklist Modell, TXT/JSON-Format, Merge, Dokument, Expressions/Actions, Export   │
 │ devices   Gerät, Registry (Ordner-Scan), configs.json, EEPROM/Info-Parser         │
 │ service   Sync.json/extern.json, History, ServiceManager (Workflows), Filter      │
 │ orders    Bestellungen                users  users.bin + Berechtigungen           │
