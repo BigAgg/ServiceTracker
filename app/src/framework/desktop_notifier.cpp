@@ -13,9 +13,11 @@
 #include <string_view>
 #include <vector>
 
+// windows.h must come first (separate block, so clang-format does not sort it)
+#include <windows.h>
+
 #include <shellapi.h>
 #include <shobjidl.h>
-#include <windows.h>
 
 namespace st::app {
 namespace {
