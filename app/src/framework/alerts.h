@@ -1,11 +1,11 @@
 #pragma once
 
 #include "framework/desktop_notifier.h"
-#include "framework/poll_timer.h"
 
 #include <st/alerts/alert_center.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -65,7 +65,8 @@ private:
 
   alerts::AlertCenter mCenter;
   std::unique_ptr<DesktopNotifier> mNotifier;
-  PollTimer mBadgeTimer{std::chrono::milliseconds(1000)};
+  /// Channels with a notification on screen / in the notification center.
+  std::set<std::string, std::less<>> mOnScreen;
   std::string mFocusTarget;
   std::string mTooltip;
 };

@@ -8,7 +8,10 @@ und mit einem roten Punkt am Taskleisten-Symbol – ähnlich wie Teams bei neuen
 | Was | Verhalten |
 |---|---|
 | Windows-Benachrichtigung | erscheint, sobald etwas Neues anliegt, und beim Programmstart, wenn bereits etwas ansteht |
-| Klick auf die Benachrichtigung | holt ServiceTracker in den Vordergrund und öffnet das passende Fenster (z. B. „Bestellungen“) |
+| Anzeigedauer | bleibt stehen, bis sie angeklickt oder mit **Schließen** weggeklickt wird (abschaltbar) |
+| Klick / **Öffnen** | holt ServiceTracker in den Vordergrund und öffnet das passende Fenster (z. B. „Bestellungen“) |
+| Neuer Stand | ersetzt die vorige Benachrichtigung derselben Art (keine Stapel) |
+| Nichts mehr offen | die Benachrichtigung verschwindet automatisch (auch aus dem Benachrichtigungscenter) |
 | Programm im Vordergrund | keine Windows-Benachrichtigung, die Meldung erscheint unten rechts im Programm |
 | Roter Punkt in der Taskleiste | solange mindestens ein Eintrag ansteht (z. B. versandbereite Bestellungen) |
 | Symbol im Infobereich | erscheint mit der ersten Benachrichtigung; Tooltip zeigt den aktuellen Stand, Klick öffnet ServiceTracker |
@@ -17,6 +20,8 @@ und mit einem roten Punkt am Taskleisten-Symbol – ähnlich wie Teams bei neuen
 Menü **Einstellungen → Benachrichtigungen** (nur sichtbar, wenn der Benutzer Benachrichtigungen erhält):
 
 - *Windows-Benachrichtigungen* aus → Meldungen nur noch im Programm.
+- *Benachrichtigung bleibt bis zum Schließen* aus → Windows blendet sie nach einigen Sekunden
+  aus, sie bleibt im Benachrichtigungscenter.
 - *Roter Punkt in der Taskleiste* an/aus.
 - Pro Art der Benachrichtigung ein Schalter und ein **Testen**-Button.
 
@@ -72,7 +77,17 @@ Regeln der `AlertCenter`:
 - Verschwundene Einträge lösen nichts aus; kommt ein Eintrag zurück, wird er wieder gemeldet.
 - Der rote Punkt zeigt die Summe aller nicht stummgeschalteten Kanäle.
 
-Technik unter Windows: Infobereich-Symbol mit Sprechblase (`Shell_NotifyIcon`, wird von
-Windows 10/11 als normale Benachrichtigung angezeigt – keine Verknüpfung oder App-ID nötig)
-und `ITaskbarList3::SetOverlayIcon` für den roten Punkt. Im Smoke-Test ersetzt
+Technik unter Windows:
+
+- Toast-Benachrichtigung über C++/WinRT (`ToastNotificationManager`). Die App-ID
+  `ServiceTracker.Desktop` wird bei jedem Start unter
+  `HKCU\Software\Classes\AppUserModelId\ServiceTracker.Desktop` (Name + `icon.png`)
+  eingetragen – keine Adminrechte, keine Verknüpfung, keine Installer-Änderung nötig.
+- „Bleibt bis zum Schließen“ = Szenario `reminder` mit den Schaltflächen *Öffnen* und
+  *Schließen*. Tag = Kanal-ID, dadurch ersetzt ein neuer Stand den alten Toast.
+- Klicks kommen auf einem Hintergrund-Thread an und werden per `PostMessage` an den
+  UI-Thread übergeben.
+- Rückfallebene, falls Toasts nicht verfügbar sind: Infobereich-Sprechblase
+  (`Shell_NotifyIcon`, verschwindet nach wenigen Sekunden).
+- Roter Punkt: `ITaskbarList3::SetOverlayIcon`. Im Smoke-Test ersetzt
 `RecordingNotifier` die Windows-Anbindung und prüft Anzeige, Klick und roten Punkt.

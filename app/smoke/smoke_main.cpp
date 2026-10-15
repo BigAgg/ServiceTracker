@@ -30,6 +30,7 @@
 #include <imgui_internal.h>
 #include <imgui/ImGui_windowcontrol.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <filesystem>
@@ -247,6 +248,7 @@ int main() {
         SMOKE_CHECK(notifier.shown[0].body == "Es ist 1 Bestellung versandbereit");
       }
       SMOKE_CHECK(notifier.badge);
+      SMOKE_CHECK(notifier.lastPersistent); // stays until clicked/closed by default
       SMOKE_CHECK(notifier.tooltip.find("Es ist 1 Bestellung versandbereit") != std::string::npos);
 
       // Click on the notification focuses the orders window
@@ -301,8 +303,25 @@ int main() {
         ImGui::Render();
       }
       const auto shownBefore = notifier.shown.size();
+      ctx.prefs().persistentNotifications = false;
       ctx.alerts.showTest(ctx, "orders.prepared");
       SMOKE_CHECK(notifier.shown.size() == shownBefore + 1);
+      SMOKE_CHECK(!notifier.lastPersistent);
+      ctx.prefs().persistentNotifications = true;
+
+      // All orders shipped: notification is withdrawn, red dot disappears
+      notifier.withdrawn.clear();
+      clock.advance(std::chrono::minutes(5)); // newer change than the module's copy
+      SMOKE_CHECK(store.refresh().has_value());
+      for (const auto id : store.idsInState(orders::OrderState::Prepared)) {
+        orders::Order shipped = *store.find(id);
+        shipped.shippingDate = "2026.01.25";
+        SMOKE_CHECK(store.upsert(shipped, other).has_value());
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+      frames(3);
+      SMOKE_CHECK(std::find(notifier.withdrawn.begin(), notifier.withdrawn.end(), "orders.prepared") != notifier.withdrawn.end());
+      SMOKE_CHECK(!notifier.badge);
     }
 
     std::puts("frames: device selected");

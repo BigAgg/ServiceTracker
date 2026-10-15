@@ -24,6 +24,8 @@ struct Preferences {
   bool ordersAsPopup = false;
   /// Show Windows notifications (otherwise only messages inside the program).
   bool desktopNotifications = true;
+  /// Windows notifications stay on screen until clicked or closed.
+  bool persistentNotifications = true;
   /// Red dot on the taskbar icon while notifications are pending.
   bool taskbarBadge = true;
   /// Ids of notification channels the user switched off (alerts::Channel::id).

@@ -6,10 +6,11 @@ if(ST_BUILD_APP)
     add_executable(ServiceTracker ${ST_APP_SOURCES} ${ST_APP_HEADERS})
     target_link_libraries(ServiceTracker PRIVATE st::core APP)
     if(WIN32)
-        # Desktop notifications: tray icon (shell32), taskbar overlay (ole32).
+        # Desktop notifications: tray icon (shell32), taskbar overlay (ole32),
+        # toasts via C++/WinRT (runtimeobject).
         # Do not add user32/gdi32 here: they are linked by default, listing them before
         # raylib makes the linker pick user32's CloseWindow over raylib's (LNK2005).
-        target_link_libraries(ServiceTracker PRIVATE shell32 ole32)
+        target_link_libraries(ServiceTracker PRIVATE shell32 ole32 runtimeobject)
     endif()
     target_include_directories(ServiceTracker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_compile_definitions(ServiceTracker PRIVATE APP_VERSION="${PROJECT_VERSION}")

@@ -12,10 +12,10 @@ namespace st::app {
 /// Operating system side of the notification system: shows notifications outside
 /// the program window, sets the taskbar badge and reports clicks.
 ///
-/// Windows: notification via a tray icon balloon (shown as Windows notification /
-/// toast on Windows 10/11, no shortcut or AUMID registration needed), red dot as
-/// taskbar overlay icon (ITaskbarList3). Other platforms and the headless smoke test
-/// use `RecordingNotifier`.
+/// Windows: toast notification (WinRT, AppUserModelID registered per user; persistent
+/// toasts use the "reminder" scenario and stay until clicked or closed), tray icon
+/// balloon as fallback, red dot as taskbar overlay icon (ITaskbarList3). Other
+/// platforms and the headless smoke test use `RecordingNotifier`.
 class DesktopNotifier {
 public:
   /// A notification or the tray icon was clicked.
@@ -26,8 +26,13 @@ public:
 
   virtual ~DesktopNotifier() = default;
 
-  /// Shows a notification outside the program window.
-  virtual void show(const alerts::Notification &notification) = 0;
+  /// Shows a notification outside the program window. A newer notification of the
+  /// same channel replaces the older one. `persistent`: stays on screen until the
+  /// user clicks or closes it.
+  virtual void show(const alerts::Notification &notification, bool persistent) = 0;
+  /// Removes the notification of `channel` from the screen and the notification
+  /// center (nothing to announce any more).
+  virtual void withdraw(const std::string &channel) = 0;
   /// Shows/hides the red dot on the taskbar icon.
   virtual void setBadge(bool visible) = 0;
   /// Tooltip of the tray icon (several lines).
@@ -47,7 +52,11 @@ public:
 /// Notifier that only records the calls (Linux, headless smoke test).
 class RecordingNotifier final : public DesktopNotifier {
 public:
-  void show(const alerts::Notification &notification) override { shown.push_back(notification); }
+  void show(const alerts::Notification &notification, bool persistent) override {
+    shown.push_back(notification);
+    lastPersistent = persistent;
+  }
+  void withdraw(const std::string &channel) override { withdrawn.push_back(channel); }
   void setBadge(bool visible) override { badge = visible; }
   void setTooltip(const std::string &text) override { tooltip = text; }
   std::optional<Activation> takeActivation() override {
@@ -59,6 +68,8 @@ public:
   void activateApp() override { ++activations; }
 
   std::vector<alerts::Notification> shown;
+  bool lastPersistent = false;
+  std::vector<std::string> withdrawn;
   bool badge = false;
   std::string tooltip;
   std::optional<Activation> activation;

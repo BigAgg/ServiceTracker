@@ -11,6 +11,7 @@ TEST_CASE("preferences: defaults, legacy checklist.bin and round trip") {
   CHECK(loadPreferences(dir / "prefs.json") == Preferences{});
   CHECK(Preferences{}.desktopNotifications);
   CHECK(Preferences{}.taskbarBadge);
+  CHECK(Preferences{}.persistentNotifications);
 
   // Files of older versions without the notification keys keep the defaults
   test::writeText(dir / "old.json", R"({"germanDates":true})");
@@ -30,6 +31,7 @@ TEST_CASE("preferences: defaults, legacy checklist.bin and round trip") {
   p.ordersAsPopup = true;
   p.desktopNotifications = false;
   p.taskbarBadge = false;
+  p.persistentNotifications = false;
   p.mutedAlerts = {"orders.prepared"};
   p.rememberDevice("a");
   p.rememberDevice("b");

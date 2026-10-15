@@ -10,7 +10,11 @@
 #include <cmath>
 #include <cstdint>
 #include <iterator>
+#include <map>
+#include <mutex>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // windows.h must come first (separate block, so clang-format does not sort it)
@@ -19,6 +23,10 @@
 #include <shellapi.h>
 #include <shobjidl.h>
 
+#include <winrt/Windows.Data.Xml.Dom.h>
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.UI.Notifications.h>
+
 namespace st::app {
 namespace {
 
@@ -26,6 +34,14 @@ constexpr UINT kTrayMessage = WM_APP + 42;
 constexpr UINT kTrayId = 1;
 constexpr wchar_t kWindowClass[] = L"ServiceTrackerNotifier";
 constexpr wchar_t kBadgeDescription[] = L"Neue Benachrichtigungen";
+/// Posted to the hidden window when a toast was clicked (toast events run on a worker thread).
+constexpr UINT kToastActivated = WM_APP + 43;
+/// AppUserModelID of the toasts, registered per user under
+/// HKCU\Software\Classes\AppUserModelId (no shortcut or installer change needed).
+constexpr wchar_t kAppId[] = L"ServiceTracker.Desktop";
+constexpr wchar_t kToastGroup[] = L"ServiceTracker";
+
+namespace toast = winrt::Windows::UI::Notifications;
 
 std::wstring widen(const std::string &utf8) {
   if (utf8.empty())
@@ -35,6 +51,45 @@ std::wstring widen(const std::string &utf8) {
   std::wstring out(static_cast<std::size_t>(len), L'\0');
   MultiByteToWideChar(CP_UTF8, 0, utf8.data(), size, out.data(), len);
   return out;
+}
+
+/// Escapes text for the toast XML.
+std::wstring xmlEscape(const std::wstring &text) {
+  std::wstring out;
+  out.reserve(text.size());
+  for (wchar_t c : text) {
+    switch (c) {
+    case L'&': out += L"&amp;"; break;
+    case L'<': out += L"&lt;"; break;
+    case L'>': out += L"&gt;"; break;
+    case L'"': out += L"&quot;"; break;
+    default: out += c;
+    }
+  }
+  return out;
+}
+
+/// Toast tags are limited to 64 characters.
+std::wstring toastTag(const std::string &channel) { return widen(channel).substr(0, 64); }
+
+/// Registers the AppUserModelID with name and icon (shown in the toast header and the
+/// Windows notification settings). Written on every start so a moved installation
+/// keeps a valid icon path.
+bool registerAppId() {
+  const std::wstring path = std::wstring(L"Software\\Classes\\AppUserModelId\\") + kAppId;
+  HKEY key = nullptr;
+  if (RegCreateKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS)
+    return false;
+  const auto setString = [key](const wchar_t *name, const std::wstring &value) {
+    RegSetValueExW(key, name, 0, REG_SZ, reinterpret_cast<const BYTE *>(value.c_str()),
+                   static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
+  };
+  setString(L"DisplayName", L"ServiceTracker");
+  const auto icon = platform::executableDir() / "icon.png";
+  if (util::pathExists(icon))
+    setString(L"IconUri", icon.wstring());
+  RegCloseKey(key);
+  return true;
 }
 
 /// Copies into a fixed NOTIFYICONDATA buffer, truncating if necessary.
@@ -153,9 +208,22 @@ public:
       mTrayIcon = CopyIcon(LoadIconW(nullptr, MAKEINTRESOURCEW(32512)));
     mBalloonIcon = loadIcon(iconFile, GetSystemMetrics(SM_CXICON));
     mDotIcon = createDotIcon(GetSystemMetrics(SM_CXSMICON));
+
+    try {
+      if (registerAppId())
+        mToastNotifier = toast::ToastNotificationManager::CreateToastNotifier(kAppId);
+    } catch (const winrt::hresult_error &e) {
+      log::warning("Windows-Benachrichtigungen (Toast) nicht verfügbar, verwende Infobereich: {}", winrt::to_string(e.message()));
+    }
   }
 
   ~WindowsNotifier() override {
+    {
+      // Revoke the click handlers before anything they use is destroyed
+      std::lock_guard lock(mToastMutex);
+      mToasts.clear();
+    }
+    mToastNotifier = nullptr;
     removeTray();
     if (mTaskbar) {
       if (HWND main = mainWindow())
@@ -175,24 +243,24 @@ public:
   WindowsNotifier(const WindowsNotifier &) = delete;
   WindowsNotifier &operator=(const WindowsNotifier &) = delete;
 
-  void show(const alerts::Notification &notification) override {
-    if (!ensureTray())
+  void show(const alerts::Notification &notification, bool persistent) override {
+    ensureTray(); // tooltip with the current state + click opens the program
+    if (showToast(notification, persistent))
       return;
-    NOTIFYICONDATAW data = baseData();
-    data.uFlags = NIF_INFO;
-    copyTruncated(data.szInfoTitle, widen(notification.title));
-    copyTruncated(data.szInfo, widen(notification.body));
-    data.dwInfoFlags = NIIF_RESPECT_QUIET_TIME;
-    if (mBalloonIcon) {
-      data.dwInfoFlags |= NIIF_USER | NIIF_LARGE_ICON;
-      data.hBalloonIcon = mBalloonIcon;
-    } else {
-      data.dwInfoFlags |= NIIF_INFO;
+    showBalloon(notification);
+  }
+
+  void withdraw(const std::string &channel) override {
+    {
+      std::lock_guard lock(mToastMutex);
+      if (mToasts.erase(channel) == 0)
+        return;
     }
-    if (Shell_NotifyIconW(NIM_MODIFY, &data))
-      mLastChannel = notification.channel;
-    else
-      log::warning("Windows-Benachrichtigung konnte nicht angezeigt werden");
+    try {
+      toast::ToastNotificationManager::History().Remove(toastTag(channel), kToastGroup, kAppId);
+    } catch (const winrt::hresult_error &) {
+      // already dismissed by the user
+    }
   }
 
   void setBadge(bool visible) override {
@@ -231,10 +299,81 @@ public:
     if (!main)
       return;
     ShowWindow(main, IsIconic(main) ? SW_RESTORE : SW_SHOW);
-    SetForegroundWindow(main);
+    if (SetForegroundWindow(main) && GetForegroundWindow() == main)
+      return;
+    // Windows may refuse the focus change; attaching to the input of the current
+    // foreground window is allowed right after the user clicked the notification.
+    const DWORD foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), nullptr);
+    const DWORD ownThread = GetCurrentThreadId();
+    if (foregroundThread != 0 && foregroundThread != ownThread && AttachThreadInput(ownThread, foregroundThread, TRUE)) {
+      BringWindowToTop(main);
+      SetForegroundWindow(main);
+      AttachThreadInput(ownThread, foregroundThread, FALSE);
+    }
   }
 
 private:
+  /// Modern Windows notification. `persistent` uses the "reminder" scenario: the toast
+  /// stays on screen until it is clicked or closed (requires at least one button).
+  bool showToast(const alerts::Notification &notification, bool persistent) {
+    if (!mToastNotifier)
+      return false;
+    try {
+      std::wstring xml = L"<toast launch=\"open\"";
+      if (persistent)
+        xml += L" scenario=\"reminder\"";
+      xml += L"><visual><binding template=\"ToastGeneric\"><text>" + xmlEscape(widen(notification.title)) +
+             L"</text><text>" + xmlEscape(widen(notification.body)) + L"</text></binding></visual>";
+      if (persistent)
+        xml += L"<actions><action content=\"Öffnen\" arguments=\"open\"/>"
+               L"<action content=\"\" arguments=\"dismiss\" activationType=\"system\"/></actions>";
+      xml += L"</toast>";
+
+      winrt::Windows::Data::Xml::Dom::XmlDocument doc;
+      doc.LoadXml(xml);
+      toast::ToastNotification item(doc);
+      item.Tag(toastTag(notification.channel)); // a newer state replaces the old toast
+      item.Group(kToastGroup);
+      const std::string channel = notification.channel;
+      auto revoker = item.Activated(winrt::auto_revoke, [this, channel](const toast::ToastNotification &, const winrt::Windows::Foundation::IInspectable &) {
+        // Worker thread: hand over to the UI thread
+        {
+          std::lock_guard lock(mToastMutex);
+          mToastActivation = channel;
+        }
+        PostMessageW(mWindow, kToastActivated, 0, 0);
+      });
+      mToastNotifier.Show(item);
+      std::lock_guard lock(mToastMutex);
+      mToasts.insert_or_assign(channel, ShownToast{std::move(item), std::move(revoker)});
+      return true;
+    } catch (const winrt::hresult_error &e) {
+      log::warning("Toast-Benachrichtigung fehlgeschlagen, verwende Infobereich: {}", winrt::to_string(e.message()));
+      return false;
+    }
+  }
+
+  /// Fallback: tray balloon (Windows hides it after a few seconds).
+  void showBalloon(const alerts::Notification &notification) {
+    if (!ensureTray())
+      return;
+    NOTIFYICONDATAW data = baseData();
+    data.uFlags = NIF_INFO;
+    copyTruncated(data.szInfoTitle, widen(notification.title));
+    copyTruncated(data.szInfo, widen(notification.body));
+    data.dwInfoFlags = NIIF_RESPECT_QUIET_TIME;
+    if (mBalloonIcon) {
+      data.dwInfoFlags |= NIIF_USER | NIIF_LARGE_ICON;
+      data.hBalloonIcon = mBalloonIcon;
+    } else {
+      data.dwInfoFlags |= NIIF_INFO;
+    }
+    if (Shell_NotifyIconW(NIM_MODIFY, &data))
+      mLastChannel = notification.channel;
+    else
+      log::warning("Windows-Benachrichtigung konnte nicht angezeigt werden");
+  }
+
   static HICON loadIcon(const std::wstring &file, int size) {
     return static_cast<HICON>(LoadImageW(nullptr, file.c_str(), IMAGE_ICON, size, size, LR_LOADFROMFILE));
   }
@@ -252,6 +391,16 @@ private:
 
   /// Returns true if the message was handled.
   bool handle(UINT message, LPARAM lParam) {
+    if (message == kToastActivated) {
+      std::string channel;
+      {
+        std::lock_guard lock(mToastMutex);
+        channel = std::exchange(mToastActivation, {});
+      }
+      mActivation = Activation{channel};
+      activateApp();
+      return true;
+    }
     if (message == kTrayMessage) {
       switch (LOWORD(lParam)) {
       case NIN_BALLOONUSERCLICK:
@@ -342,6 +491,15 @@ private:
   std::wstring mTooltip = L"ServiceTracker";
   std::string mLastChannel;
   std::optional<Activation> mActivation;
+
+  struct ShownToast {
+    toast::ToastNotification toast;
+    toast::ToastNotification::Activated_revoker revoker;
+  };
+  toast::ToastNotifier mToastNotifier{nullptr};
+  std::mutex mToastMutex;
+  std::map<std::string, ShownToast> mToasts; // by channel
+  std::string mToastActivation;
 };
 
 } // namespace

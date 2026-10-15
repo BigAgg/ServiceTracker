@@ -30,16 +30,19 @@ void Alerts::showTest(AppContext &ctx, std::string_view channelId) {
   const std::size_t count = mCenter.count(channelId);
   alerts::Notification test{channel->id, channel->title,
                             channel->summaryText ? channel->summaryText(count) : channel->label, channel->target};
-  if (mNotifier && ctx.prefs().desktopNotifications)
-    mNotifier->show(test); // also when the program is in front – the user wants to see it
-  else
+  if (mNotifier && ctx.prefs().desktopNotifications) {
+    mNotifier->show(test, ctx.prefs().persistentNotifications); // also when in front – the user wants to see it
+    mOnScreen.insert(test.channel);
+  } else {
     ctx.notify.info(test.title + ": " + test.body);
+  }
 }
 
 void Alerts::deliver(AppContext &ctx, const alerts::Notification &notification) {
   if (mNotifier && ctx.prefs().desktopNotifications && !mNotifier->appInForeground()) {
     log::info("Benachrichtigung: {} – {}", notification.title, notification.body);
-    mNotifier->show(notification);
+    mNotifier->show(notification, ctx.prefs().persistentNotifications);
+    mOnScreen.insert(notification.channel);
     return;
   }
   ctx.notify.info(notification.body);
@@ -55,12 +58,20 @@ void Alerts::update(AppContext &ctx) {
 
   if (!mNotifier)
     return;
+  // Nothing left to announce (e.g. all orders shipped): remove the notification
+  for (auto it = mOnScreen.begin(); it != mOnScreen.end();) {
+    if (mCenter.count(*it) == 0 || mCenter.isMuted(*it)) {
+      mNotifier->withdraw(*it);
+      it = mOnScreen.erase(it);
+    } else {
+      ++it;
+    }
+  }
   if (auto activation = mNotifier->takeActivation()) {
     const alerts::Channel *channel = mCenter.channel(activation->channel);
     mFocusTarget = channel && !channel->target.empty() ? channel->target : mCenter.firstActiveTarget();
   }
-  if (!mBadgeTimer.due())
-    return;
+  // Both calls are cheap: the notifier only talks to Windows when something changed
   mNotifier->setBadge(prefs.taskbarBadge && mCenter.activeCount() > 0);
   std::string tooltip = "ServiceTracker";
   for (const auto &line : mCenter.summaryLines())

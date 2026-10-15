@@ -25,6 +25,12 @@ bool GeneralModule::drawNotificationSettings(AppContext &ctx) {
   changed |= ImGui::Checkbox("Windows-Benachrichtigungen", &prefs.desktopNotifications);
   ui::help("Ist ServiceTracker im Vordergrund, erscheint die Meldung nur im Programm.\n"
            "Ein Klick auf die Benachrichtigung öffnet ServiceTracker.");
+  {
+    ui::Disabled off(!prefs.desktopNotifications);
+    changed |= ImGui::Checkbox("Benachrichtigung bleibt bis zum Schließen", &prefs.persistentNotifications);
+    ui::help("Aus: Windows blendet die Benachrichtigung nach einigen Sekunden aus\n"
+             "(sie bleibt im Benachrichtigungscenter).");
+  }
   changed |= ImGui::Checkbox("Roter Punkt in der Taskleiste", &prefs.taskbarBadge);
   ui::help("Wird nur bei großen Taskleisten-Schaltflächen angezeigt (Windows-Einstellung).");
   for (const auto *channel : channels) {

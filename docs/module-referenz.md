@@ -18,7 +18,7 @@ Berechtigungsgruppen (Benutzerverwaltung): `SERVICE_CREATOR`, `SERVICE_CREATOR_E
 | Fertiggemeldet / Berechtigungen ignorieren | nur Poweruser: alles bearbeitbar |
 | Erwartete und erledigte Geräte anzeigen | Reader Control ohne Filter zeigt sonst nur Geräte in Arbeit |
 | Bestellungen als Popup öffnen | Darstellung im Fenster „Bestellungen“ |
-| Benachrichtigungen | Windows-Benachrichtigungen, roter Punkt, je Art an/aus + „Testen“ (nur für Empfänger, siehe [benachrichtigungen.md](benachrichtigungen.md)) |
+| Benachrichtigungen | Windows-Benachrichtigungen, „bleibt bis zum Schließen“, roter Punkt, je Art an/aus + „Testen“ (nur für Empfänger, siehe [benachrichtigungen.md](benachrichtigungen.md)) |
 | Pfade | zeigt alle konfigurierten Pfade, Klick öffnet den Ordner |
 | Log-Datei / Anleitung öffnen | `run.log`, `Anleitung.pdf` |
 
