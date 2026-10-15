@@ -13,6 +13,8 @@
 #include <imgui/ImGui_helpers.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include <optional>
+
 namespace st::app {
 
 using orders::Order;
@@ -239,6 +241,16 @@ Order &OrdersModule::draftOf(const Order &stored) {
   return it->second;
 }
 
+void OrdersModule::drawOrderList(AppContext &ctx, const std::vector<std::uint64_t> &ids) {
+  const bool striped = !ctx.prefs().ordersAsPopup; // popup mode: compact list without stripes
+  for (std::size_t i = 0; i < ids.size(); ++i) {
+    std::optional<ui::StripedRow> row;
+    if (striped)
+      row.emplace(i);
+    drawOrderEntry(ctx, ids[i]);
+  }
+}
+
 void OrdersModule::drawOrderEntry(AppContext &ctx, std::uint64_t id) {
   const Order *stored = mStore.find(id);
   if (!stored)
@@ -257,7 +269,7 @@ void OrdersModule::drawOrderEntry(AppContext &ctx, std::uint64_t id) {
         ImGui::CloseCurrentPopup();
       ImGui::EndPopup();
     }
-  } else if (ImGui::TreeNode(label.c_str())) {
+  } else if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth)) {
     drawOrder(ctx, draftOf(*stored), false);
     ImGui::TreePop();
   }
@@ -338,8 +350,7 @@ void OrdersModule::drawWindow(AppContext &ctx) {
   if (!mSearch.empty()) {
     ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
     if (ImGui::TreeNode("##results", "Ergebnisse (%zu)", mSearchResult.size())) {
-      for (const auto id : mSearchResult)
-        drawOrderEntry(ctx, id);
+      drawOrderList(ctx, mSearchResult);
       ImGui::TreePop();
     }
   }
@@ -354,8 +365,7 @@ void OrdersModule::drawWindow(AppContext &ctx) {
     const bool open = ImGui::TreeNode("##state", "%s (%zu)", std::string(orders::stateLabel(state)).c_str(), ids.size());
     ImGui::PopStyleColor();
     if (open) {
-      for (const auto id : ids)
-        drawOrderEntry(ctx, id);
+      drawOrderList(ctx, ids);
       ImGui::TreePop();
     }
   }

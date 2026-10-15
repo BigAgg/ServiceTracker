@@ -9,6 +9,27 @@
 
 namespace st::app::ui {
 
+StripedRow::StripedRow(std::size_t index)
+    : mDrawList(ImGui::GetWindowDrawList()), mStart(ImGui::GetCursorScreenPos()), mHighlighted(index % 2 == 1) {
+  // Content goes to channel 1, the stripe is added to channel 0 (behind) once the
+  // height of the (possibly expanded) entry is known.
+  mSplitter.Split(mDrawList, 2);
+  mSplitter.SetCurrentChannel(mDrawList, 1);
+}
+
+StripedRow::~StripedRow() {
+  const ImGuiStyle &style = ImGui::GetStyle();
+  const float halfGap = style.ItemSpacing.y * 0.5f;
+  const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+  const ImVec2 min(mStart.x - style.FramePadding.x, mStart.y - halfGap);
+  const ImVec2 max(right, ImGui::GetCursorScreenPos().y - halfGap);
+  mSplitter.SetCurrentChannel(mDrawList, 0);
+  if (mHighlighted)
+    mDrawList->AddRectFilled(min, max, ImGui::GetColorU32(ImGuiCol_Header, 0.35f), style.FrameRounding);
+  mDrawList->AddLine(ImVec2(min.x, max.y), max, ImGui::GetColorU32(ImGuiCol_Separator, 0.5f));
+  mSplitter.Merge(mDrawList);
+}
+
 bool searchField(const char *id, std::string &text, const char *hint) {
   ScopedId scope(id);
   if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_F))

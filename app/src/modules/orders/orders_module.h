@@ -24,6 +24,8 @@ private:
   void drawWindow(AppContext &ctx);
   /// Editor for one order. `isNew` shows customer selection and disables saving per field.
   void drawOrder(AppContext &ctx, orders::Order &order, bool isNew);
+  /// List of orders; inline mode draws alternating stripes behind the entries.
+  void drawOrderList(AppContext &ctx, const std::vector<std::uint64_t> &ids);
   void drawOrderEntry(AppContext &ctx, std::uint64_t id);
   orders::Order &draftOf(const orders::Order &stored);
   void drawNewOrderPopup(AppContext &ctx);

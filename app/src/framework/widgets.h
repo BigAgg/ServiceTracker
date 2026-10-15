@@ -39,6 +39,29 @@ public:
   ScopedId &operator=(const ScopedId &) = delete;
 };
 
+/// Background stripe behind one entry of a list (header plus expanded content):
+/// every second entry is highlighted and a thin line separates the entries.
+/// Everything drawn while the object lives is placed on top of the stripe, so an
+/// expanded entry keeps its color over its full height.
+///
+///   for (std::size_t i = 0; i < ids.size(); ++i) {
+///     ui::StripedRow row(i);
+///     if (ImGui::TreeNode(...)) { ...; ImGui::TreePop(); }
+///   }
+class StripedRow {
+public:
+  explicit StripedRow(std::size_t index);
+  ~StripedRow();
+  StripedRow(const StripedRow &) = delete;
+  StripedRow &operator=(const StripedRow &) = delete;
+
+private:
+  ImDrawListSplitter mSplitter;
+  ImDrawList *mDrawList;
+  ImVec2 mStart;
+  bool mHighlighted;
+};
+
 /// Search input with hint, clear button ("x") and Ctrl+F focus when the window is focused.
 /// Returns true when the text changed.
 bool searchField(const char *id, std::string &text, const char *hint = "suchen... (Strg+F)");
