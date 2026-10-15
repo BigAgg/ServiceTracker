@@ -7,10 +7,10 @@
         "syncDir": "Y:/CrossDept/Automation/ServiceCreatorApp/SYNC",
         "externLocalDir": "extern",
         "externFile": "Y:/CrossDept/Automation/ServiceCreatorApp/SYNC/extern.json",
-        "ordersFile": "Y:/CrossDept/Automation/ServiceCreatorApp/SYNC/Bestellungen_test.json",
+        "ordersFile": "Y:/CrossDept/Automation/ServiceCreatorApp/SYNC/Bestellungen.json",
         "crashDir": "Y:/CrossDept/Automation/ServiceCreatorApp/crashes"
     },
-    "updateUrl": "https://api.github.com/repos/BigAgg/ServiceCreator_Releases/releases/latest",
+    "updateUrl": "https://api.github.com/repos/BigAgg/ServiceTracker/releases/latest",
     "updateInstaller": "install_ServiceTracker.exe",
     "bootstrapAdmin": "ajahraus",
     "refreshIntervalMs": 1000,
