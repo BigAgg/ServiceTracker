@@ -68,7 +68,7 @@ TEST_CASE("alerts: summary channel announces start state and new items only") {
     center.report("orders.prepared", items({"1", "2"}));
     const auto pending = center.takePending();
     REQUIRE(pending.size() == 1);
-    CHECK(pending[0] == Notification{"orders.prepared", "ServiceTracker - Bestellungen", "Es sind 2 Bestellungen versandbereit", "Bestellungen"});
+    CHECK(pending[0] == Notification{"orders.prepared", "ServiceTracker - Bestellungen", "Es sind 2 Bestellungen versandbereit", "Bestellungen", "orders.prepared"});
     CHECK_FALSE(center.hasPending());
   }
 
@@ -143,6 +143,7 @@ TEST_CASE("alerts: per item channel and burst collapsing") {
   auto pending = center.takePending();
   REQUIRE(pending.size() == 1);
   CHECK(pending[0].body == "Neuer Reader im Wareneingang 0601-1");
+  CHECK(pending[0].key == "devices.received/0601-1"); // separate notification per device
 
   center.report("devices.received", items({"0601-1", "0601-2", "0601-3"}));
   pending = center.takePending();
@@ -154,6 +155,7 @@ TEST_CASE("alerts: per item channel and burst collapsing") {
   pending = center.takePending();
   REQUIRE(pending.size() == 1);
   CHECK(pending[0].body == "6 Reader im Wareneingang");
+  CHECK(pending[0].key == "devices.received");
 }
 
 TEST_CASE("alerts: muted channels") {

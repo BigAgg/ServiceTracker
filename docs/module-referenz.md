@@ -33,6 +33,9 @@ Datei: `preferences.json` im Programmordner (übernimmt beim ersten Start `check
 - Ohne Filter: nur Geräte, die gerade bearbeitet werden (Einstellung „Erwartete und
   erledigte Geräte anzeigen“ zeigt alle aus der Liste). Mit Suchtext/Projekt: alle Geräte.
 - „Neu laden“ liest Geräteordner und `Sync.json` neu.
+- `TECHSUPPORT`: Windows-Benachrichtigung „Neuer Reader im Wareneingang: *Seriennummer*“,
+  sobald ein Gerät mit Status „Wareneingang“ in der Liste erscheint; Klick wählt das Gerät
+  aus ([benachrichtigungen.md](benachrichtigungen.md)).
 
 **Reader Filewalker** – Dateien des Geräts durchsuchen. Klick auf Ordner öffnet ihn,
 Doppelklick auf Datei öffnet sie, Rechtsklick: Öffnen / Im Explorer zeigen / Pfad kopieren.
@@ -121,6 +124,8 @@ Stellt bereit: Expressions `@rinfo.readerinfo.*`, `@rinfo.config.<flag>`, `@rinf
 - `SALES`: Windows-Benachrichtigung „Es sind *n* Bestellungen versandbereit“, sobald eine
   Bestellung versandbereit wird und beim Start; roter Punkt in der Taskleiste, solange
   Bestellungen versandbereit sind ([benachrichtigungen.md](benachrichtigungen.md)).
+- Ohne „Als Popup öffnen“: Bestellungen abwechselnd farbig hinterlegt und durch Linien
+  getrennt; eine aufgeklappte Bestellung behält ihre Farbe über den ganzen Bereich.
 - Bestellung anlegen (`TECHSUPPORT`): Kunde (bekannte Kunden + bisherige), Bestellnummer,
   Eingangsdatum (vorbelegt mit heute), Express.
 - Bearbeiten: Datumsfelder mit „Heute“, **Nächster Schritt** trägt das heutige Datum beim

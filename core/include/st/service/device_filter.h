@@ -21,6 +21,8 @@ public:
   /// Devices with a status, sorted.
   std::vector<std::string> devices() const;
   std::size_t count(std::string_view status) const;
+  /// Devices with exactly `status`, sorted.
+  std::vector<std::string> devicesWithStatus(std::string_view status) const;
 
 private:
   std::map<std::string, std::string, std::less<>> mStatus;

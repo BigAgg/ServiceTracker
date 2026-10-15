@@ -238,6 +238,27 @@ int main() {
       ImGui::Render();
     }
 
+    std::puts("frames: orders expanded (striped rows)");
+    {
+      // Open the group "Versandbereit" and order 42 like a user click would
+      // (same ID stack as OrdersModule::drawWindow / drawOrderEntry).
+      ImGuiWindow *window = ImGui::FindWindowByName("Bestellungen");
+      SMOKE_CHECK(window != nullptr);
+      const float collapsedHeight = window ? window->ContentSize.y : 0.0f;
+      if (window) {
+        const int state = static_cast<int>(orders::OrderState::Prepared);
+        const ImGuiID group = ImHashStr("##state", 0, ImHashData(&state, sizeof(state), window->ID));
+        const int order = 42;
+        const ImGuiID entry = ImHashStr("ORD-1 -> BMG UK", 0, ImHashData(&order, sizeof(order), group));
+        window->StateStorage.SetInt(group, 1);
+        window->StateStorage.SetInt(entry, 1);
+      }
+      SMOKE_CHECK(!ctx.prefs().ordersAsPopup);
+      frames(3);
+      SMOKE_CHECK(window && window->ContentSize.y > collapsedHeight + 100.0f); // order editor is open
+      sweep("orders");
+    }
+
     std::puts("frames: notifications");
     {
       // Start: one order is ready for shipping -> Windows notification + red dot
@@ -252,7 +273,7 @@ int main() {
       SMOKE_CHECK(notifier.tooltip.find("Es ist 1 Bestellung versandbereit") != std::string::npos);
 
       // Click on the notification focuses the orders window
-      notifier.activation = app::DesktopNotifier::Activation{"orders.prepared"};
+      notifier.activation = app::DesktopNotifier::Activation{"orders.prepared", "orders.prepared"};
       frames(2);
       SMOKE_CHECK(GImGui->NavWindow && std::string(GImGui->NavWindow->RootWindow->Name).starts_with("Bestellungen"));
 
@@ -332,12 +353,15 @@ int main() {
     frames(5);
 
     std::puts("frames: service created");
+    const auto shownBeforeCreate = notifier.shown.size();
     auto created = ctx.services().createService(*ctx.activeDevice(), ctx.session());
     SMOKE_CHECK(created.has_value());
     if (created)
       ctx.applyRecord(*created);
     SMOKE_CHECK(ctx.checklist().isOpen());
     frames(5);
+    SMOKE_CHECK(ctx.statusIndex().statusOf("0601-1234") == "Wareneingang");
+    SMOKE_CHECK(notifier.shown.size() == shownBeforeCreate); // own device booked in: no notification
 
     std::puts("frames: checklist edited, autosave");
     if (ctx.checklist().isOpen()) {
@@ -396,6 +420,23 @@ int main() {
       ctx.applyRecord(*planned);
     frames(5);
     sweep("extern");
+
+    std::puts("frames: device received by another user");
+    {
+      service::ServiceRecord arrived;
+      arrived.name = "0471-77";
+      arrived.status = std::string(service::status::Received);
+      std::this_thread::sleep_for(std::chrono::milliseconds(1100)); // new modification time
+      SMOKE_CHECK(service::RecordStore(sync / "Sync.json").upsert(arrived).has_value());
+      std::this_thread::sleep_for(std::chrono::milliseconds(300));
+      frames(3);
+      SMOKE_CHECK(!notifier.shown.empty() && notifier.shown.back().body == "Neuer Reader im Wareneingang: 0471-77");
+      SMOKE_CHECK(!notifier.shown.empty() && notifier.shown.back().key == "devices.received/0471-77");
+      // Click selects the device
+      notifier.activation = app::DesktopNotifier::Activation{"devices.received", "devices.received/0471-77"};
+      frames(2);
+      SMOKE_CHECK(ctx.activeDeviceName() == "0471-77");
+    }
 
     std::puts("frames: other device, no device");
     ctx.selectDevice("0471-77");

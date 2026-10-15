@@ -1,6 +1,7 @@
 #include "framework/alerts.h"
 
 #include "framework/app_context.h"
+#include "framework/events.h"
 
 #include <st/util/log.h>
 
@@ -29,7 +30,8 @@ void Alerts::showTest(AppContext &ctx, std::string_view channelId) {
     return;
   const std::size_t count = mCenter.count(channelId);
   alerts::Notification test{channel->id, channel->title,
-                            channel->summaryText ? channel->summaryText(count) : channel->label, channel->target};
+                            channel->summaryText ? channel->summaryText(count) : channel->label, channel->target,
+                            channel->id};
   if (mNotifier && ctx.prefs().desktopNotifications) {
     mNotifier->show(test, ctx.prefs().persistentNotifications); // also when in front – the user wants to see it
     mOnScreen.insert(test.channel);
@@ -70,6 +72,10 @@ void Alerts::update(AppContext &ctx) {
   if (auto activation = mNotifier->takeActivation()) {
     const alerts::Channel *channel = mCenter.channel(activation->channel);
     mFocusTarget = channel && !channel->target.empty() ? channel->target : mCenter.firstActiveTarget();
+    std::string item;
+    if (channel && activation->key.starts_with(channel->id + "/"))
+      item = activation->key.substr(channel->id.size() + 1);
+    ctx.events.publish(events::AlertActivated{activation->channel, item});
   }
   // Both calls are cheap: the notifier only talks to Windows when something changed
   mNotifier->setBadge(prefs.taskbarBadge && mCenter.activeCount() > 0);

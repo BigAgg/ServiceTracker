@@ -225,6 +225,8 @@ Definiert in `app/src/framework/events.h`:
 | `ChecklistOpened` / `ChecklistSaved` / `ChecklistClosed` | Checklisten-Sitzung |
 | `SaveChecklistRequest` | Checkliste sofort speichern lassen |
 | `PreferencesChanged` | persönliche Einstellungen geändert |
+| `RecordApplied` | eigene Service-Aktion übernommen (`ctx.applyRecord`), vor `RecordsChanged` |
+| `AlertActivated` | Benachrichtigung angeklickt (Kanal + Eintrag) |
 
 Neues Ereignis = neues `struct` in `events.h`. Handler laufen synchron in `publish()`.
 
@@ -254,7 +256,8 @@ Vorhandene Namen niemals umbenennen – sie stehen in bestehenden Checklisten-Da
 
 `ui::Disabled`, `ui::ScopedId`, `ui::searchField` (Strg+F, Esc leert), `ui::confirmButton`,
 `ui::statusBadge`/`statusColor`, `ui::inputMultiline` (wächst mit), `ui::todayButton`,
-`ui::help`, `ui::errorText`, `ui::hintText`, `ui::copyContextMenu`, `ui::listBox`.
+`ui::help`, `ui::errorText`, `ui::hintText`, `ui::copyContextMenu`, `ui::listBox`,
+`ui::StripedRow` (abwechselnd hinterlegte Listeneinträge, auch aufgeklappt).
 Neue, mehrfach genutzte Bausteine dort ergänzen statt in Modulen zu kopieren.
 
 ### Regeln für Module

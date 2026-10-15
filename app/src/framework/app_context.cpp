@@ -161,6 +161,7 @@ void AppContext::selectService(const std::string &service) {
 }
 
 void AppContext::applyRecord(const service::ServiceRecord &record) {
+  events.publish(events::RecordApplied{record.name});
   if (record.name == mActiveDevice) {
     mActiveRecord = record;
     if (auto *device = activeDevice())

@@ -45,8 +45,11 @@ std::string AlertCenter::summaryOf(const State &state) const {
   return std::format("{}: {}", state.channel.label, state.count);
 }
 
-void AlertCenter::queue(const State &state, std::string body) {
-  mPending.push_back({state.channel.id, state.channel.title, std::move(body), state.channel.target});
+void AlertCenter::queue(const State &state, std::string body, std::string_view itemId) {
+  std::string key = state.channel.id;
+  if (!itemId.empty())
+    key += "/" + std::string(itemId);
+  mPending.push_back({state.channel.id, state.channel.title, std::move(body), state.channel.target, std::move(key)});
 }
 
 void AlertCenter::report(std::string_view channelId, const std::vector<Item> &items) {
@@ -83,7 +86,7 @@ void AlertCenter::report(std::string_view channelId, const std::vector<Item> &it
     return;
   }
   for (const Item *item : fresh)
-    queue(*state, ch.itemText(*item));
+    queue(*state, ch.itemText(*item), item->id);
 }
 
 void AlertCenter::markSeen(std::string_view channelId, std::string_view itemId) {

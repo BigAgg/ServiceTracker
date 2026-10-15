@@ -38,6 +38,14 @@ std::size_t StatusIndex::count(std::string_view value) const {
   return static_cast<std::size_t>(std::count_if(mStatus.begin(), mStatus.end(), [&](const auto &p) { return p.second == value; }));
 }
 
+std::vector<std::string> StatusIndex::devicesWithStatus(std::string_view value) const {
+  std::vector<std::string> out;
+  for (const auto &[device, s] : mStatus)
+    if (s == value)
+      out.push_back(device);
+  return out;
+}
+
 std::vector<std::string> filterDevices(const devices::DeviceRegistry &registry, const StatusIndex &index, const DeviceFilter &filter) {
   std::vector<std::string> out;
   if (filter.empty()) {

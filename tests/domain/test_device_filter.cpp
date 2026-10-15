@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include <algorithm>
+
 #include "st/service/device_filter.h"
 #include "test_helpers.h"
 
@@ -37,6 +39,11 @@ TEST_CASE("status index") {
   CHECK(index.statusOf("0601-3").empty());
   CHECK(index.statuses() == std::vector<std::string>{"Technik", "Versand", "erledigt", "erwartet"});
   CHECK(index.count("Technik") == 2);
+  const auto technik = index.devicesWithStatus("Technik");
+  CHECK(technik.size() == 2);
+  CHECK(std::is_sorted(technik.begin(), technik.end()));
+  CHECK(index.devicesWithStatus("erwartet").size() == 1);
+  CHECK(index.devicesWithStatus("Wareneingang").empty());
 }
 
 TEST_CASE("device filter like Reader Control") {

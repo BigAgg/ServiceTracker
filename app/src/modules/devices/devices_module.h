@@ -23,6 +23,8 @@ private:
   void drawInfo(AppContext &ctx);
   void drawConfiguration(AppContext &ctx);
   void refilter(AppContext &ctx);
+  /// Reports all devices "im Wareneingang" to the notification system.
+  void reportReceived(AppContext &ctx);
   void openFolder(const util::fs::path &folder);
 
   service::DeviceFilter mFilter;

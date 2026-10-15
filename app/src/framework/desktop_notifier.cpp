@@ -39,7 +39,6 @@ constexpr UINT kToastActivated = WM_APP + 43;
 /// AppUserModelID of the toasts, registered per user under
 /// HKCU\Software\Classes\AppUserModelId (no shortcut or installer change needed).
 constexpr wchar_t kAppId[] = L"ServiceTracker.Desktop";
-constexpr wchar_t kToastGroup[] = L"ServiceTracker";
 
 namespace toast = winrt::Windows::UI::Notifications;
 
@@ -69,8 +68,9 @@ std::wstring xmlEscape(const std::wstring &text) {
   return out;
 }
 
-/// Toast tags are limited to 64 characters.
-std::wstring toastTag(const std::string &channel) { return widen(channel).substr(0, 64); }
+/// Toast tag and group are limited to 64 characters. Tag = notification key (replaces
+/// the older toast with the same key), group = channel (withdrawn together).
+std::wstring toastId(const std::string &text) { return widen(text).substr(0, 64); }
 
 /// Registers the AppUserModelID with name and icon (shown in the toast header and the
 /// Windows notification settings). Written on every start so a moved installation
@@ -253,11 +253,11 @@ public:
   void withdraw(const std::string &channel) override {
     {
       std::lock_guard lock(mToastMutex);
-      if (mToasts.erase(channel) == 0)
+      if (std::erase_if(mToasts, [&](const auto &entry) { return entry.second.channel == channel; }) == 0)
         return;
     }
     try {
-      toast::ToastNotificationManager::History().Remove(toastTag(channel), kToastGroup, kAppId);
+      toast::ToastNotificationManager::History().RemoveGroup(toastId(channel), kAppId);
     } catch (const winrt::hresult_error &) {
       // already dismissed by the user
     }
@@ -332,20 +332,20 @@ private:
       winrt::Windows::Data::Xml::Dom::XmlDocument doc;
       doc.LoadXml(xml);
       toast::ToastNotification item(doc);
-      item.Tag(toastTag(notification.channel)); // a newer state replaces the old toast
-      item.Group(kToastGroup);
-      const std::string channel = notification.channel;
-      auto revoker = item.Activated(winrt::auto_revoke, [this, channel](const toast::ToastNotification &, const winrt::Windows::Foundation::IInspectable &) {
+      item.Tag(toastId(notification.key)); // a newer state replaces the old toast
+      item.Group(toastId(notification.channel));
+      const Activation activation{notification.channel, notification.key};
+      auto revoker = item.Activated(winrt::auto_revoke, [this, activation](const toast::ToastNotification &, const winrt::Windows::Foundation::IInspectable &) {
         // Worker thread: hand over to the UI thread
         {
           std::lock_guard lock(mToastMutex);
-          mToastActivation = channel;
+          mToastActivation = activation;
         }
         PostMessageW(mWindow, kToastActivated, 0, 0);
       });
       mToastNotifier.Show(item);
       std::lock_guard lock(mToastMutex);
-      mToasts.insert_or_assign(channel, ShownToast{std::move(item), std::move(revoker)});
+      mToasts.insert_or_assign(notification.key, ShownToast{notification.channel, std::move(item), std::move(revoker)});
       return true;
     } catch (const winrt::hresult_error &e) {
       log::warning("Toast-Benachrichtigung fehlgeschlagen, verwende Infobereich: {}", winrt::to_string(e.message()));
@@ -369,7 +369,7 @@ private:
       data.dwInfoFlags |= NIIF_INFO;
     }
     if (Shell_NotifyIconW(NIM_MODIFY, &data))
-      mLastChannel = notification.channel;
+      mLastBalloon = Activation{notification.channel, notification.key};
     else
       log::warning("Windows-Benachrichtigung konnte nicht angezeigt werden");
   }
@@ -392,19 +392,17 @@ private:
   /// Returns true if the message was handled.
   bool handle(UINT message, LPARAM lParam) {
     if (message == kToastActivated) {
-      std::string channel;
       {
         std::lock_guard lock(mToastMutex);
-        channel = std::exchange(mToastActivation, {});
+        mActivation = std::exchange(mToastActivation, {});
       }
-      mActivation = Activation{channel};
       activateApp();
       return true;
     }
     if (message == kTrayMessage) {
       switch (LOWORD(lParam)) {
       case NIN_BALLOONUSERCLICK:
-        mActivation = Activation{mLastChannel};
+        mActivation = mLastBalloon;
         activateApp();
         return true;
       case NIN_SELECT:
@@ -489,17 +487,18 @@ private:
   bool mBadgeShown = false;
   HWND mBadgeWindow = nullptr;
   std::wstring mTooltip = L"ServiceTracker";
-  std::string mLastChannel;
+  Activation mLastBalloon;
   std::optional<Activation> mActivation;
 
   struct ShownToast {
+    std::string channel;
     toast::ToastNotification toast;
     toast::ToastNotification::Activated_revoker revoker;
   };
   toast::ToastNotifier mToastNotifier{nullptr};
   std::mutex mToastMutex;
-  std::map<std::string, ShownToast> mToasts; // by channel
-  std::string mToastActivation;
+  std::map<std::string, ShownToast> mToasts; // by notification key
+  Activation mToastActivation;
 };
 
 } // namespace

@@ -64,6 +64,10 @@ struct Notification {
   std::string title;
   std::string body;
   std::string target;
+  /// Identifies the notification on screen: the channel id for summaries,
+  /// "<channel>/<item id>" for per-item notifications. A newer notification with the
+  /// same key replaces the older one.
+  std::string key;
 
   bool operator==(const Notification &) const = default;
 };
@@ -115,7 +119,7 @@ private:
   };
   State *find(std::string_view id);
   const State *find(std::string_view id) const;
-  void queue(const State &state, std::string body);
+  void queue(const State &state, std::string body, std::string_view itemId = {});
   std::string summaryOf(const State &state) const;
 
   std::vector<State> mStates;

@@ -13,22 +13,27 @@
 
 namespace st::app {
 
-///  Notification channel id - stored in the preferences, never rename
+namespace {
+
+/// Notification channel id – stored in the preferences, never rename.
 constexpr const char *kAlertDevicesReceived = "devices.received";
 
-/// Everyone from TECHSUPPORT gets a notification as soon as a service is created
-alerts::Channel preparedChannel() {
+/// TECHSUPPORT gets a notification as soon as a device appears in the service list
+/// with status "Wareneingang" (new device or e.g. an expected device that arrived).
+alerts::Channel receivedChannel() {
   alerts::Channel channel;
   channel.id = kAlertDevicesReceived;
-  channel.label = "Reader eingetroffen";
+  channel.label = "Reader im Wareneingang";
   channel.title = "ServiceTracker - Wareneingang";
-  channel.mode = alerts::Mode::PerItem; // Eine Meldung pro neuem Eintrag
-  channel.itemText = [](const alerts::Item &item) { return "Neuer Reader im Wareneingang" + item.label; };
+  channel.mode = alerts::Mode::PerItem; // one notification per device
+  channel.itemText = [](const alerts::Item &item) { return "Neuer Reader im Wareneingang: " + item.label; };
   channel.summaryText = [](std::size_t n) { return alerts::countSentence(n, "Reader", "Reader", "im Wareneingang"); };
   channel.target = "Reader Control";
   channel.audience = {std::string(users::groups::Techsupport)};
   return channel;
 }
+
+} // namespace
 
 void DevicesModule::init(AppContext &ctx) {
   ctx.ui.addWindow("Reader Control", [this, &ctx] { drawControl(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -37,7 +42,17 @@ void DevicesModule::init(AppContext &ctx) {
     ctx.ui.addWindow("ReaderInfo", [this, &ctx] { drawInfo(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
     ctx.ui.addWindow("Konfiguration", [this, &ctx] { drawConfiguration(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
   }
-  ctx.events.subscribe<events::RecordsChanged>([this](const auto &) { mDirty = true; });
+  ctx.events.subscribe<events::RecordsChanged>([this, &ctx](const auto &) {
+    mDirty = true;
+    reportReceived(ctx);
+  });
+  // Devices this user booked in himself are no news for him
+  ctx.events.subscribe<events::RecordApplied>([&ctx](const events::RecordApplied &e) { ctx.alerts.markSeen(kAlertDevicesReceived, e.device); });
+  // Click on "Neuer Reader im Wareneingang: <serial>" selects that device
+  ctx.events.subscribe<events::AlertActivated>([&ctx](const events::AlertActivated &e) {
+    if (e.channel == kAlertDevicesReceived && !e.item.empty() && ctx.deviceRegistry.find(e.item))
+      ctx.selectDevice(e.item);
+  });
   ctx.events.subscribe<events::DevicesRescanned>([this](const auto &) { mDirty = true; });
   ctx.events.subscribe<events::PreferencesChanged>([this](const auto &) { mDirty = true; });
   ctx.events.subscribe<events::DeviceSelected>([this, &ctx](const auto &) {
@@ -48,7 +63,15 @@ void DevicesModule::init(AppContext &ctx) {
     if (!mBrowsePath.empty())
       mEntries = util::listDirectory(mBrowsePath);
   });
-  ctx.alerts.addChannel(ctx, preparedChannel());
+  if (ctx.alerts.addChannel(ctx, receivedChannel()))
+    reportReceived(ctx);
+}
+
+void DevicesModule::reportReceived(AppContext &ctx) {
+  std::vector<alerts::Item> items;
+  for (auto &device : ctx.statusIndex().devicesWithStatus(service::status::Received))
+    items.push_back({device, device});
+  ctx.alerts.report(kAlertDevicesReceived, items);
 }
 
 void DevicesModule::refilter(AppContext &ctx) {

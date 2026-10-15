@@ -10,7 +10,7 @@ und mit einem roten Punkt am Taskleisten-Symbol – ähnlich wie Teams bei neuen
 | Windows-Benachrichtigung | erscheint, sobald etwas Neues anliegt, und beim Programmstart, wenn bereits etwas ansteht |
 | Anzeigedauer | bleibt stehen, bis sie angeklickt oder mit **Schließen** weggeklickt wird (abschaltbar) |
 | Klick / **Öffnen** | holt ServiceTracker in den Vordergrund und öffnet das passende Fenster (z. B. „Bestellungen“) |
-| Neuer Stand | ersetzt die vorige Benachrichtigung derselben Art (keine Stapel) |
+| Neuer Stand | ersetzt die vorige Sammel-Benachrichtigung derselben Art (keine Stapel); Meldungen pro Gerät bleiben einzeln stehen |
 | Nichts mehr offen | die Benachrichtigung verschwindet automatisch (auch aus dem Benachrichtigungscenter) |
 | Programm im Vordergrund | keine Windows-Benachrichtigung, die Meldung erscheint unten rechts im Programm |
 | Roter Punkt in der Taskleiste | solange mindestens ein Eintrag ansteht (z. B. versandbereite Bestellungen) |
@@ -38,6 +38,11 @@ Hinweise:
 | Kanal-ID | Empfänger | Titel | Text | Fenster |
 |---|---|---|---|---|
 | `orders.prepared` | `SALES` | ServiceTracker - Bestellungen | Es sind *n* Bestellungen versandbereit | Bestellungen |
+| `devices.received` | `TECHSUPPORT` | ServiceTracker - Wareneingang | Neuer Reader im Wareneingang: *Seriennummer* (mehr als 3 auf einmal: Es sind *n* Reader im Wareneingang) | Reader Control, Klick wählt das Gerät aus |
+
+`devices.received` meldet jedes Gerät, das in der Service-Liste (`Sync.json`) mit dem Status
+„Wareneingang“ auftaucht – neu angelegt oder z. B. ein erwartetes Gerät, das eingetroffen
+ist. Wer den Service selbst anlegt, bekommt keine Meldung.
 
 ## Für Entwickler: neue Benachrichtigung einbauen
 
@@ -62,8 +67,11 @@ ctx.alerts.addChannel(ctx, channel);
 // bei jeder Datenänderung (z. B. nach dem Polling in update()): alle aktuell offenen Einträge melden
 ctx.alerts.report("devices.received", {{"0601-1234", "0601-1234"}, ...});
 
-// eigene Änderung nicht melden
+// eigene Änderung nicht melden (z. B. über events::RecordApplied)
 ctx.alerts.markSeen("devices.received", "0601-1234");
+
+// Klick auf eine Meldung pro Eintrag: events::AlertActivated{channel, item}
+ctx.events.subscribe<events::AlertActivated>([&ctx](const events::AlertActivated &e) { ... });
 ```
 
 Regeln der `AlertCenter`:

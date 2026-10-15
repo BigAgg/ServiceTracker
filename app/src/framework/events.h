@@ -20,6 +20,20 @@ struct ServiceSelected {
 /// The service list (Sync.json) changed – by this program or by another user.
 struct RecordsChanged {};
 
+/// This user changed a record (ServiceManager action applied with ctx.applyRecord).
+/// Published before the following RecordsChanged, e.g. to suppress notifications
+/// about the user's own changes.
+struct RecordApplied {
+  std::string device;
+};
+
+/// A notification was clicked. `item` is the item id of a per-item notification
+/// (e.g. the device), empty for summaries and clicks on the tray icon.
+struct AlertActivated {
+  std::string channel;
+  std::string item;
+};
+
 /// The device list was rescanned.
 struct DevicesRescanned {};
 

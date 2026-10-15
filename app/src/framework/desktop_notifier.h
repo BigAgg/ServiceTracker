@@ -22,15 +22,17 @@ public:
   struct Activation {
     /// Channel of the clicked notification; empty for a click on the tray icon.
     std::string channel;
+    /// Key of the clicked notification (alerts::Notification::key).
+    std::string key;
   };
 
   virtual ~DesktopNotifier() = default;
 
-  /// Shows a notification outside the program window. A newer notification of the
-  /// same channel replaces the older one. `persistent`: stays on screen until the
+  /// Shows a notification outside the program window. A newer notification with the
+  /// same key replaces the older one. `persistent`: stays on screen until the
   /// user clicks or closes it.
   virtual void show(const alerts::Notification &notification, bool persistent) = 0;
-  /// Removes the notification of `channel` from the screen and the notification
+  /// Removes all notifications of `channel` from the screen and the notification
   /// center (nothing to announce any more).
   virtual void withdraw(const std::string &channel) = 0;
   /// Shows/hides the red dot on the taskbar icon.
