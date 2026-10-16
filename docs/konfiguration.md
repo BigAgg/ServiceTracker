@@ -15,7 +15,9 @@ Version 1 (Pfade auf `Y:`). Es müssen nur die Werte angegeben werden, die abwei
 }
 ```
 
-Eine vollständige Vorlage mit allen Standardwerten: `deploy/ServiceTracker.example.json`.
+Die ausgelieferte Datei `deploy/ServiceTracker.json` enthält alle Standardwerte (ein Test
+stellt sicher, dass sie mit den Standardwerten im Code übereinstimmt). Der Installer legt sie
+nur an, wenn noch keine vorhanden ist.
 Ist die Datei fehlerhaft, startet das Programm mit Standardwerten und zeigt eine Meldung.
 
 | Schlüssel | Standard | Bedeutung |
@@ -24,12 +26,12 @@ Ist die Datei fehlerhaft, startet das Programm mit Standardwerten und zeigt eine
 | `paths.requestsDir` | `…/ServiceCreatorApp/REQUESTS` | Änderungswünsche |
 | `paths.devicesRoot` | `Y:/Gerätenachweise` | Geräteordner (Projektordner `0xxx …`) |
 | `paths.configsDir` | `…/ServiceCreatorApp/configs` | enthält `configs.json` |
-| `paths.syncDir` | `…/ServiceCreatorApp/SYNC` | `Sync.json`, `History.json`, `style.txt`, `temp/`, `oldhistory/` |
+| `paths.syncDir` | `…/ServiceCreatorApp/SYNC` | `Sync.json`, `History.json`, `History_extern.json`, `style.txt`, `temp/`, `oldhistory/` |
 | `paths.externLocalDir` | `extern` | lokale Kopien externer Services (relativ zum Programmordner) |
-| `paths.externFile` | `…/SYNC/extern.json` | Liste externer Services |
-| `paths.ordersFile` | `…/SYNC/Bestellungen_test.json` | Bestellungen |
+| `paths.externFile` | `…/SYNC/extern.json` | externe Services bis zum Fertigmelden |
+| `paths.ordersFile` | `…/SYNC/Bestellungen.json` | Bestellungen |
 | `paths.crashDir` | `…/ServiceCreatorApp/crashes` | Kopie des Logs nach einem Absturz |
-| `updateUrl` | GitHub-Release-API | automatische Updates (cpp_app) |
+| `updateUrl` | GitHub-Release-API `BigAgg/ServiceTracker` | automatische Updates (cpp_app) |
 | `updateInstaller` | `install_ServiceTracker.exe` | Name des Installers im Release |
 | `bootstrapAdmin` | `ajahraus` | immer Poweruser (Schutz vor Aussperren) |
 | `refreshIntervalMs` | `1000` | wie oft Änderungen anderer Benutzer geprüft werden |

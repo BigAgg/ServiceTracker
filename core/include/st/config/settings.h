@@ -27,12 +27,14 @@ struct Paths {
   /// List of the external services.
   std::string externFile = "Y:/CrossDept/Automation/ServiceCreatorApp/SYNC/extern.json";
   /// Orders ("Bestellungen").
-  std::string ordersFile = "Y:/CrossDept/Automation/ServiceCreatorApp/SYNC/Bestellungen_test.json";
+  std::string ordersFile = "Y:/CrossDept/Automation/ServiceCreatorApp/SYNC/Bestellungen.json";
   /// Crash logs are copied here.
   std::string crashDir = "Y:/CrossDept/Automation/ServiceCreatorApp/crashes";
 
   util::fs::path syncFile() const { return util::pathFromUtf8(syncDir) / "Sync.json"; }
   util::fs::path historyFile() const { return util::pathFromUtf8(syncDir) / "History.json"; }
+  /// History of finished external services.
+  util::fs::path externHistoryFile() const { return util::pathFromUtf8(syncDir) / "History_extern.json"; }
   util::fs::path styleFile() const { return util::pathFromUtf8(syncDir) / "style.txt"; }
   util::fs::path syncTempDir() const { return util::pathFromUtf8(syncDir) / "temp"; }
   util::fs::path oldHistoryDir() const { return util::pathFromUtf8(syncDir) / "oldhistory"; }
@@ -44,7 +46,7 @@ struct Paths {
 struct Settings {
   Paths paths;
   /// GitHub API URL of the latest release (cpp_app updater).
-  std::string updateUrl = "https://api.github.com/repos/BigAgg/ServiceCreator_Releases/releases/latest";
+  std::string updateUrl = "https://api.github.com/repos/BigAgg/ServiceTracker/releases/latest";
   std::string updateInstaller = "install_ServiceTracker.exe";
   /// This user is always a power user, even if the user table is empty or broken.
   std::string bootstrapAdmin = "ajahraus";

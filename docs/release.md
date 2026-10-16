@@ -14,7 +14,7 @@ Das Skript
 5. erstellt mit Inno Setup den Installer `output/install_ServiceTracker.exe`.
 
 Danach `CHANGES` ausfüllen, Änderungen committen und ein GitHub-Release im Update-Repository
-(`updateUrl`, Standard `BigAgg/ServiceCreator_Releases`) mit dem Installer anlegen. Die
+(`updateUrl`, Standard `BigAgg/ServiceTracker`) mit dem Installer anlegen. Die
 installierten Programme finden das Update über den cpp_app-Updater.
 
 ## Installer (`installer/setup_template.iss`)
