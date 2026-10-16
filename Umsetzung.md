@@ -18,6 +18,9 @@ Dafür soll das bestehende Programm neu geschrieben werden.
 * Lege viel wert auf kleine features die die bedienung einfacher machen
 * Neuimplementierungen in "Programminfo.md" selbständig umsetzen und danach aus Programminfo.md löschen
 * Designänderungen in "Programminfo.md" selbständig umsetzen und danach aus Programminfo.md löschen
+* Benutzungsänderungen in "Programminfo.md" selbständig umsetzen und danch aus Programminfo.md löschen
+* Alle änderungen gut dokumentieren
+* Dokumentiere einzelne module unter docs/module
 
 ## Struktur
 

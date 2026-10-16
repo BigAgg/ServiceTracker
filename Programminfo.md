@@ -32,3 +32,22 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
 - In den versand gestellt und datum eingetragen
 - Versendet und Rechnungsnummer sowie versanddatum werden eingetragen
 - Bestellung wird abgeschlossen
+
+## Benutzungsänderungen:
+
+### Workflow externer Service:
+
+- Externer Service wird angelegt
+    - Kopiert den Geräte-Ordner in ein lokales verzeichnis in welchem dann beim kunden gearbeitet wird
+    - Gearbeitet wir im lokalen verzeichnis
+    - Wenn man intern arbeitet und zugriff auf den Geräte-Ordner hat, wird die Checkliste synchronisiert mit dem Geräteordner.
+    - wenn der service techniker wieder im haus ist, schließt er den service ab, das synchronisiert ein letztes mal die checkliste mit der auf dem server und setzt den status auf "extern abgeschlossen" und kopiert den lokalen geräte-ordner über den originalen
+    - tracke externe services in einer separaten sync datei
+    - externe services werden ebenfalls nicht in History getracked sondern in History extern
+    - Anschließend kann intern "Service fertigmelden" gewählt werden um den service endgültig abzuschließen
+- In den configs möchte ich zusätzlich anlegen können, dass bei extern erstellten service andere dateien angelegt werden als bei einem internen. so kann ich andere checklisten verwenden für extern als für intern
+
+### Bestellungen:
+
+- Sales soll auch Bestellungen anlegen dürfen
+
