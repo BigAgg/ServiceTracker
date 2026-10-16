@@ -5,8 +5,8 @@ registriert seine Fenster, Menüs, Expressions und Ereignis-Handler selbst und h
 UI-Zustand als Member. Module kennen sich nicht gegenseitig – sie teilen sich den
 `AppContext` und kommunizieren über Ereignisse.
 
-Eine Übersicht aller vorhandenen Module mit ihren Fenstern und Funktionen steht in
-[module-referenz.md](module-referenz.md).
+Eine Übersicht aller vorhandenen Module steht in [module-referenz.md](module-referenz.md),
+jedes Modul ist unter [module/](module/) in einer eigenen Datei beschrieben.
 
 ## Lebenszyklus
 
@@ -171,8 +171,9 @@ registry.add<LoansModule>();
   UI-Smoke-Test müssen grün sein.
 - Für neue Fenster das Modul im Smoke-Test (`app/smoke/smoke_main.cpp`) ergänzen und den
   Fensternamen in die Layout-Liste aufnehmen, damit der Maus-Sweep es abdeckt.
-- Dokumentation: Eintrag in [module-referenz.md](module-referenz.md), neue Dateien in
-  [dateiformate.md](dateiformate.md).
+- Dokumentation: neue Datei `docs/module/<name>.md` (Vorbild: [module/orders.md](module/orders.md)),
+  Zeile in [module-referenz.md](module-referenz.md), neue Dateien in
+  [dateiformate.md](dateiformate.md), Eintrag in [aenderungen.md](aenderungen.md).
 
 ## Bausteine im Detail
 

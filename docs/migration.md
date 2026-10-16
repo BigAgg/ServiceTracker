@@ -18,13 +18,18 @@ Beide Versionen können während der Umstellung parallel benutzt werden.
 - Reader Control: Status farbig in der Liste, Anzahl je Status, „Zuletzt verwendet“,
   Kontextmenü (Ordner öffnen, Name/Seriennummer kopieren), Doppelklick öffnet den Ordner.
 - Filewalker: Kontextmenü, „Zum Gerät“, Drag & Drop in den aktuellen Ordner.
-- Externe Services vollständig: Abschluss kopiert die Arbeit zurück, erstellt Record und Historie.
-- Historie: Jahresfilter, Export der gefilterten Einträge, `extern.json` als Quelle.
+- Externe Services: Checkliste wird im Haus automatisch mit dem Geräteordner abgeglichen,
+  „Extern abschließen“ kopiert die Arbeit zurück, „Service fertigmelden“ erstellt Record und
+  Eintrag in der eigenen Historie `History_extern.json`; eigene Vorlagen für externe Services
+  in den Configs ([module/extern.md](module/extern.md)).
+- Historie: Jahresfilter, Export der gefilterten Einträge, `extern.json` und
+  `History_extern.json` als Quelle.
 - Bestellungen: „Nächster Schritt“, „Heute“-Buttons, Status farbig mit Anzahl, Bearbeitung
-  mehrerer Benutzer wird zusammengeführt.
+  mehrerer Benutzer wird zusammengeführt; `SALES` darf Bestellungen anlegen.
 - Benutzer- und Config-Verwaltung als eigene Dialoge mit Suche.
-- **Benachrichtigungen** (neu): `SALES` erhält eine Windows-Benachrichtigung und einen roten
-  Punkt in der Taskleiste, sobald Bestellungen versandbereit sind ([benachrichtigungen.md](benachrichtigungen.md)).
+- **Benachrichtigungen** (neu): Windows-Benachrichtigung und roter Punkt in der Taskleiste –
+  `SALES` bei versandbereiten Bestellungen, `TECHSUPPORT` bei neuen Geräten im Wareneingang
+  ([benachrichtigungen.md](benachrichtigungen.md)).
 - Alle Pfade über `ServiceTracker.json` konfigurierbar (Testumgebungen ohne `Y:`).
 
 ## Behobene Fehler aus Version 1

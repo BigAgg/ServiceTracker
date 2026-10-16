@@ -41,7 +41,7 @@ getestet), GUI in `app/` (Windows). Einstieg: [README.md](README.md),
 | `app/src/modules/<name>/` | ein Feature = ein Modul; registriert in `modules/register_modules.cpp` |
 | `app/smoke/` | Headless-UI-Test; neue Fenster dort ergänzen |
 | `tests/` | doctest, Hilfen in `tests/test_helpers.h`, Testdaten in `tests/data/` |
-| `docs/` | deutsch; bei neuen Modulen/Dateien/Einstellungen aktualisieren |
+| `docs/` | deutsch; je Modul eine Datei in `docs/module/`, jede Änderung in `docs/aenderungen.md` |
 
 Wichtige Invarianten:
 - **Fensternamen nie ändern** (Docking-Layout `imgui.ini` der Benutzer hängt daran).

@@ -31,4 +31,5 @@ ctest --preset windows
 ## Danach
 
 - `git status` prüfen: keine Build-Artefakte, kein `installer/setup.iss`.
-- Doku aktualisiert? (`docs/module-referenz.md`, `docs/dateiformate.md`, `docs/konfiguration.md`)
+- Doku aktualisiert? (`docs/module/<name>.md`, `docs/aenderungen.md`, `docs/dateiformate.md`,
+  `docs/konfiguration.md`)

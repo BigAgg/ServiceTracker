@@ -13,8 +13,9 @@ Alle Dateien sind UTF-8. Geschrieben wird immer atomar (Temp-Datei + Umbenennen)
 |---|---|---|---|
 | `*Checklist*.json` / `.txt` | Sync-Ordner bzw. Service-Ordner | Checkliste | `checklist/formats.h` |
 | `Sync.json` | `SYNC/` | Geräte in Arbeit | `service/records.h` |
-| `extern.json` | `SYNC/` | externe Services | `service/records.h` |
+| `extern.json` | `SYNC/` | externe Services bis zum Fertigmelden | `service/records.h` |
 | `History.json` | `SYNC/` | abgeschlossene Services | `service/history.h` |
+| `History_extern.json` | `SYNC/` | abgeschlossene externe Services (neu, Format wie `History.json`) | `service/history.h` |
 | `<Gerät>_info.json` | Service-Ordner | Datensatz beim Abschluss | `service/records.h` |
 | `<Gerät>_SR_<Datum>.html` | Service- und Geräteordner | Service Record | `checklist/export.h` |
 | `style.txt` | `SYNC/` | optionaler HTML-Kopf für Records | `checklist/export.h` |
@@ -129,7 +130,9 @@ Array von Datensätzen, ein Eintrag pro Gerät:
 ```
 
 Status von Programm: `erwartet`, `Wareneingang`, `erledigt`, `geplant extern`, `extern`,
-`erledigt extern`; Section Actions können beliebige weitere setzen. Leerer Status bzw. kein
+`extern abgeschlossen` (neu: zurückkopiert, wartet auf „Service fertigmelden“),
+`erledigt extern`; Section Actions können beliebige weitere setzen (außer bei externen
+Services, siehe [module/extern.md](module/extern.md)). Leerer Status bzw. kein
 Eintrag = Gerät nicht in der Liste.
 
 ## History.json
@@ -148,10 +151,14 @@ berechnet)* im Arbeitsgang *Preisliste*. `duration` = Tage zwischen Service-Datu
   "project": "0601",
   "folders": ["Bilder"],
   "files": [{"path": "Y:/…/Checklist.json", "rename": "{reader}_Checklist_{service}.json"}],
+  "filesExtern": [{"path": "Y:/…/Checklist_extern.json", "rename": "{reader}_Checklist_{service}.json"}],
   "addresses": [{"address": 100, "flagToSet": 4, "validationvalue": 1, "foldersToAdd": ["LUM"]}],
   "baseFlags": ["abs"]
 }]
 ```
+
+`filesExtern` ist neu und optional: Vorlagen für externe Services. Fehlt der Schlüssel oder ist
+die Liste leer, werden die `files` verwendet; er wird nur geschrieben, wenn er belegt ist.
 
 `flagToSet` ist der Bitwert der Hardware-Option (FI=1, ABS=2, LUM=4, TRF=8, ALPHA=16,
 EXT_INC=32, FP=64, TRF_LASER=128, LTS=256). `baseFlags` ist neu und optional – fehlt es,

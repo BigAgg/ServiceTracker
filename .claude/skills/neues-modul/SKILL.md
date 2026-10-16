@@ -31,5 +31,6 @@ Ausführliche Erklärung mit Beispielcode: `docs/module.md`. Kurzfassung:
 5. **Smoke-Test** `app/smoke/smoke_main.cpp`: Modul hinzufügen (`modules.add<...>()`),
    Fensternamen in die Layout-Liste aufnehmen, relevanten Workflow durchspielen.
 6. **Prüfen** mit Skill `pruefen`.
-7. **Doku**: `docs/module-referenz.md` (Nutzung), ggf. `docs/dateiformate.md`,
+7. **Doku**: `docs/module/<name>.md` (Nutzung, Dateien, Code) + Zeile in
+   `docs/module-referenz.md`, Eintrag in `docs/aenderungen.md`, ggf. `docs/dateiformate.md`,
    `docs/konfiguration.md`.

@@ -37,12 +37,13 @@ Voraussetzungen und Details: [docs/build.md](docs/build.md).
 - [Build & Entwicklungsumgebung](docs/build.md)
 - [Architektur](docs/architektur.md)
 - [Module: Nutzung & neue Module einbinden](docs/module.md)
-- [Modul-Referenz (alle Fenster und Funktionen)](docs/module-referenz.md)
+- [Modul-Referenz (alle Fenster und Funktionen)](docs/module-referenz.md), je Modul: [docs/module/](docs/module/)
 - [Dateiformate & Kompatibilität](docs/dateiformate.md)
 - [Konfiguration (ServiceTracker.json)](docs/konfiguration.md)
 - [Benachrichtigungen](docs/benachrichtigungen.md)
 - [Tests](docs/tests.md)
 - [Release & Installer](docs/release.md)
+- [Änderungsprotokoll](docs/aenderungen.md)
 - [Änderungen gegenüber Version 1](docs/migration.md)
 
 ## Lizenz
