@@ -9,6 +9,7 @@
 #include <st/checklist/export.h>
 #include <st/util/log.h>
 #include <st/util/strings.h>
+#include <st/util/time.h>
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -25,6 +26,7 @@ constexpr const char *kChecklistFilter = "Checkliste:json,txt";
 
 void ChecklistModule::init(AppContext &ctx) {
   mRefresh.setInterval(std::chrono::milliseconds(std::max(250, ctx.settings().refreshIntervalMs)));
+  mMirrorPoll.setInterval(std::chrono::milliseconds(std::max(2000, ctx.settings().refreshIntervalMs * 2)));
   ctx.ui.addWindow(kWorkWindow, [this, &ctx] { drawWorkWindow(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
   if (ctx.isPoweruser())
     ctx.ui.addWindow(kEditorWindow, [this, &ctx] { drawEditorWindow(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -37,6 +39,8 @@ void ChecklistModule::open(AppContext &ctx) {
   if (session.doc && session.dirty)
     saveNow(ctx);
   session.doc.reset();
+  session.mirror.reset();
+  session.mirrorState.clear();
   session.dirty = false;
   session.lastError.clear();
   mWorkState = {};
@@ -49,6 +53,11 @@ void ChecklistModule::open(AppContext &ctx) {
       auto doc = checklist::ChecklistDocument::load(*path);
       if (doc) {
         session.doc = std::move(*doc);
+        if (service::isExternalWorkStatus(ctx.activeRecord().status))
+          if (const auto mirror = ctx.services().mirrorOf(*device, *path)) {
+            session.mirror = ChecklistSession::Mirror{*mirror, ctx.services().externCopyFor(*device), device->path};
+            mMirrorPoll.reset(); // sync right away
+          }
         ctx.events.publish(events::ChecklistOpened{util::pathToUtf8(*path)});
       } else {
         session.lastError = doc.error().message;
@@ -76,6 +85,8 @@ bool ChecklistModule::saveNow(AppContext &ctx) {
   }
   session.dirty = false;
   session.lastError.clear();
+  if (session.mirror)
+    mMirrorPoll.reset(); // bring the server copy up to date right away
   updateAttention(ctx);
   ctx.events.publish(events::ChecklistSaved{util::pathToUtf8(session.doc->path())});
   return true;
@@ -95,6 +106,25 @@ void ChecklistModule::update(AppContext &ctx) {
       log::warning("Checkliste konnte nicht synchronisiert werden: {}", merged.error().message);
     }
   }
+  if (session.mirror && !session.dirty && mMirrorPoll.due())
+    syncMirror(ctx);
+}
+
+void ChecklistModule::syncMirror(AppContext &ctx) {
+  auto &session = ctx.checklist();
+  const auto &mirror = *session.mirror;
+  if (!util::isDirectory(mirror.serverRoot)) {
+    session.mirrorState = "Geräteordner nicht erreichbar – es wird nur lokal gespeichert";
+    return;
+  }
+  auto synced = session.doc->syncWithMirror(mirror.file, mirror.localRoot, mirror.serverRoot);
+  if (!synced) {
+    if (session.mirrorState != synced.error().message)
+      log::warning("Checkliste konnte nicht mit dem Geräteordner abgeglichen werden: {}", synced.error().message);
+    session.mirrorState = "Abgleich fehlgeschlagen: " + synced.error().message;
+    return;
+  }
+  session.mirrorState = "Mit Geräteordner synchronisiert: " + util::formatTimestamp(ctx.session().now()).substr(11);
 }
 
 void ChecklistModule::shutdown(AppContext &ctx) {
@@ -177,6 +207,11 @@ void ChecklistModule::drawWorkWindow(AppContext &ctx) {
     return;
   }
   drawToolbar(ctx, *session.doc, false);
+  if (session.mirror) {
+    ui::hintText("Externer Service (lokale Kopie). " + (session.mirrorState.empty() ? std::string("Abgleich mit dem Geräteordner...") : session.mirrorState));
+    ImGui::SetItemTooltip("Lokal: %s\nServer: %s\nIm Haus wird die Checkliste automatisch in beide Richtungen abgeglichen.",
+                          util::pathToUtf8(session.doc->path()).c_str(), util::pathToUtf8(session.mirror->file).c_str());
+  }
   ImGui::Separator();
   ChecklistRenderer renderer(ctx, *session.doc, mWorkState, false, [this, &ctx](bool immediate) {
     ctx.checklist().markDirty();

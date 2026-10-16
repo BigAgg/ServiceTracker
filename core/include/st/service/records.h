@@ -11,7 +11,7 @@
 
 /// Service state of devices, stored in shared JSON lists:
 ///  - Sync.json   : all devices currently "in the list" (in house services)
-///  - extern.json : planned/running external services
+///  - extern.json : external services until they are finished ("Service fertigmelden")
 /// Both files contain an array of records with identical keys.
 namespace st::service {
 
@@ -22,11 +22,16 @@ inline constexpr std::string_view Received = "Wareneingang";
 inline constexpr std::string_view Done = "erledigt";
 inline constexpr std::string_view External = "extern";
 inline constexpr std::string_view PlannedExternal = "geplant extern";
+/// External work is done and copied back; the service still has to be finished
+/// in house ("Service fertigmelden").
+inline constexpr std::string_view ExternFinished = "extern abgeschlossen";
 inline constexpr std::string_view DoneExternal = "erledigt extern";
 } // namespace status
 
 /// True for "", "erledigt" and "erledigt extern" (device is not being worked on).
 bool isClosedStatus(std::string_view value);
+/// True while the technician works on the local copy ("geplant extern", "extern").
+bool isExternalWorkStatus(std::string_view value);
 
 struct ServiceRecord {
   std::string name;

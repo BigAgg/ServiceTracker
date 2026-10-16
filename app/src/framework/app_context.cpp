@@ -29,6 +29,7 @@ AppContext::AppContext(config::Settings settings, std::string user, util::fs::pa
   env.syncStore = service::RecordStore(p.syncFile());
   env.externStore = service::RecordStore(util::pathFromUtf8(p.externFile));
   env.history = service::HistoryStore(p.historyFile());
+  env.externHistory = service::HistoryStore(p.externHistoryFile());
   env.configs = &configStore;
   mServices = std::make_unique<service::ServiceManager>(std::move(env));
 }
@@ -52,6 +53,7 @@ void AppContext::initialize() {
   if (mSyncAvailable) {
     notify.check(services().environment().syncStore.ensureExists(), "Sync.json");
     notify.check(services().environment().history.ensureExists(), "History.json");
+    notify.check(services().environment().externHistory.ensureExists(), "History_extern.json");
   } else {
     notify.warning("Sync-Ordner nicht erreichbar: " + p.syncDir);
   }

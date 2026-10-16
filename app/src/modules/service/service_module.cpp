@@ -144,11 +144,18 @@ void ServiceModule::drawWindow(AppContext &ctx) {
   }
   {
     namespace s = service::status;
+    const bool externalWork = service::isExternalWorkStatus(record.status);
     const bool canFinish = access && !record.activeService.empty() && record.status != s::Done && record.status != s::Expected &&
-                           record.status != s::DoneExternal && record.status != s::PlannedExternal;
-    ui::Disabled d(!canFinish);
-    if (ImGui::Button("Service fertigmelden"))
-      ImGui::OpenPopup("Service fertigmelden");
+                           record.status != s::DoneExternal && !externalWork;
+    {
+      ui::Disabled d(!canFinish);
+      if (ImGui::Button("Service fertigmelden"))
+        ImGui::OpenPopup("Service fertigmelden");
+    }
+    if (externalWork)
+      ImGui::SetItemTooltip("Externer Service: zuerst unter \"Externe Services\" \"Extern abschließen\"");
+    else if (record.status == s::ExternFinished)
+      ImGui::SetItemTooltip("Schließt den externen Service ab: Service Record + Eintrag in History_extern.json");
   }
 
   // Manual status (power users)

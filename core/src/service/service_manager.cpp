@@ -1,5 +1,7 @@
 #include "st/service/service_manager.h"
 
+#include "st/checklist/document.h"
+
 #include "st/util/log.h"
 #include "st/util/strings.h"
 
@@ -14,7 +16,17 @@ std::string u8(const fs::path &p) { return util::pathToUtf8(p); }
 
 util::Error error(std::string message) { return util::Error{std::move(message)}; }
 
-bool isExternalStatus(std::string_view s) { return s == status::PlannedExternal || s == status::External; }
+/// Checklist files (".json"/".txt" containing "Checklist") directly inside `folder`.
+std::vector<fs::path> checklistFiles(const fs::path &folder) {
+  std::vector<fs::path> out;
+  for (const auto &file : util::listDirectory(folder, false, true)) {
+    const std::string name = u8(file.filename());
+    const std::string ext = util::toLower(u8(file.extension()));
+    if (name.find("Checklist") != std::string::npos && (ext == ".json" || ext == ".txt"))
+      out.push_back(file);
+  }
+  return out;
+}
 } // namespace
 
 ServiceManager::ServiceManager(ServiceEnvironment env) : mEnv(std::move(env)) {}
@@ -57,7 +69,7 @@ std::optional<fs::path> ServiceManager::findChecklist(const devices::Device &dev
   if (service.empty())
     return std::nullopt;
   std::vector<fs::path> folders;
-  if (isExternalStatus(record.status) && record.activeService == service)
+  if (isExternalWorkStatus(record.status) && record.activeService == service)
     folders.push_back(externCopyFor(device) / util::pathFromUtf8(service));
   // same order as the legacy program: device folder first, then the sync folder
   folders.push_back(device.path / util::pathFromUtf8(service));
@@ -80,6 +92,13 @@ std::optional<fs::path> ServiceManager::findChecklist(const devices::Device &dev
   return std::nullopt;
 }
 
+std::optional<fs::path> ServiceManager::mirrorOf(const devices::Device &device, const fs::path &file) const {
+  const auto rel = file.lexically_normal().lexically_relative(externCopyFor(device).lexically_normal());
+  if (rel.empty() || rel.native().starts_with(fs::path("..").native()))
+    return std::nullopt;
+  return device.path / rel;
+}
+
 util::Status ServiceManager::createServiceFolders(const devices::Device &device, const fs::path &serviceFolder) const {
   if (auto s = util::createDirectories(serviceFolder); !s)
     return s;
@@ -97,13 +116,13 @@ util::Status ServiceManager::createServiceFolders(const devices::Device &device,
   return {};
 }
 
-util::Status ServiceManager::copyTemplates(const devices::Device &device, const std::string &date, const fs::path &target) const {
+util::Status ServiceManager::copyTemplates(const devices::Device &device, const std::string &date, const fs::path &target, bool external) const {
   const devices::DeviceConfig *config = mEnv.configs ? mEnv.configs->find(device.project()) : nullptr;
   if (!config)
     return {};
   if (auto s = util::createDirectories(target); !s)
     return s;
-  for (const auto &file : config->files) {
+  for (const auto &file : config->templatesFor(external)) {
     const auto name = devices::DeviceConfig::expandName(file.rename, device.name, date);
     if (auto s = util::copyFile(util::pathFromUtf8(file.path), target / util::pathFromUtf8(name)); !s)
       return s;
@@ -127,7 +146,7 @@ util::Result<ServiceRecord> ServiceManager::createService(const devices::Device 
     return std::unexpected(s.error());
   if (auto s = util::createDirectories(syncFolder); !s)
     return std::unexpected(s.error());
-  if (auto s = copyTemplates(device, date, syncFolder); !s)
+  if (auto s = copyTemplates(device, date, syncFolder, false); !s)
     return std::unexpected(s.error());
 
   record->activeService = folder;
@@ -152,7 +171,7 @@ util::Result<ServiceRecord> ServiceManager::setStatus(const devices::Device &dev
   record->status = newStatus;
   if (auto s = mEnv.syncStore.upsert(*record); !s)
     return std::unexpected(s.error());
-  if (isExternalStatus(newStatus) || newStatus == status::DoneExternal) {
+  if (isExternalWorkStatus(newStatus) || newStatus == status::ExternFinished) {
     if (auto s = mEnv.externStore.upsert(*record); !s)
       return std::unexpected(s.error());
   }
@@ -182,7 +201,7 @@ util::Result<ServiceRecord> ServiceManager::setAdditionalInfo(const devices::Dev
   record->additionalInfo = info;
   if (auto s = mEnv.syncStore.upsert(*record); !s)
     return std::unexpected(s.error());
-  if (isExternalStatus(record->status))
+  if (isExternalWorkStatus(record->status) || record->status == status::ExternFinished)
     if (auto s = mEnv.externStore.upsert(*record); !s)
       return std::unexpected(s.error());
   return record;
@@ -201,7 +220,7 @@ double ServiceManager::priceOf(const checklist::Checklist &checklist) const {
 
 util::Result<FinishResult> ServiceManager::finalize(const devices::Device &device, ServiceRecord record, const fs::path &workFolder,
                                                     const checklist::Checklist *checklist, const checklist::HtmlOptions &html,
-                                                    const util::Session &session) {
+                                                    const HistoryStore &history, const util::Session &session) {
   const std::string service = record.activeService;
   const fs::path serviceFolder = device.path / util::pathFromUtf8(service);
   const std::string today = session.date();
@@ -235,7 +254,7 @@ util::Result<FinishResult> ServiceManager::finalize(const devices::Device &devic
     record.duration = std::max(0L, *days);
   if (auto s = util::json::save(serviceFolder / util::pathFromUtf8(device.name + "_info.json"), recordToJson(record)); !s)
     return std::unexpected(s.error());
-  if (auto s = mEnv.history.append(record, checklist ? priceOf(*checklist) : 0.0, today); !s)
+  if (auto s = history.append(record, checklist ? priceOf(*checklist) : 0.0, today); !s)
     return std::unexpected(s.error());
 
   record.activeService.clear();
@@ -255,11 +274,20 @@ util::Result<FinishResult> ServiceManager::finishService(const devices::Device &
     return std::unexpected(record.error());
   if (record->activeService.empty())
     return std::unexpected(error("Für " + device.name + " läuft kein Service"));
-  if (isExternalStatus(record->status))
-    return std::unexpected(error(device.name + " ist ein externer Service. Bitte unter \"Externe Services\" abschließen"));
-  record->status = record->status == status::External ? status::DoneExternal : status::Done;
+  if (isExternalWorkStatus(record->status))
+    return std::unexpected(error(device.name + " ist ein externer Service. Bitte zuerst unter \"Externe Services\" \"Extern abschließen\" wählen"));
+  if (record->status == status::ExternFinished) {
+    record->status = status::DoneExternal;
+    auto result = finalize(device, std::move(*record), {}, checklist, html, mEnv.externHistory, session);
+    if (!result)
+      return result;
+    if (auto s = mEnv.externStore.remove(device.name); !s)
+      return std::unexpected(s.error());
+    return result;
+  }
+  record->status = status::Done;
   const fs::path work = record->syncFolder.empty() ? fs::path() : util::pathFromUtf8(record->syncFolder);
-  return finalize(device, std::move(*record), work, checklist, html, session);
+  return finalize(device, std::move(*record), work, checklist, html, mEnv.history, session);
 }
 
 util::Result<ServiceRecord> ServiceManager::createExternService(const devices::Device &device, const std::string &date, const std::string &info,
@@ -276,7 +304,7 @@ util::Result<ServiceRecord> ServiceManager::createExternService(const devices::D
   const fs::path serviceFolder = device.path / util::pathFromUtf8(folder);
   if (auto s = createServiceFolders(device, serviceFolder); !s)
     return std::unexpected(s.error());
-  if (auto s = copyTemplates(device, date, serviceFolder); !s)
+  if (auto s = copyTemplates(device, date, serviceFolder, true); !s)
     return std::unexpected(s.error());
   if (auto s = util::copyTree(device.path, externCopyFor(device)); !s)
     return std::unexpected(s.error());
@@ -294,24 +322,51 @@ util::Result<ServiceRecord> ServiceManager::createExternService(const devices::D
   return record;
 }
 
-util::Result<FinishResult> ServiceManager::finishExternService(const devices::Device &device, const checklist::Checklist *checklist,
-                                                               const checklist::HtmlOptions &html, const util::Session &session) {
+util::Result<ServiceRecord> ServiceManager::finishExternService(const devices::Device &device) {
   auto record = recordFor(device);
   if (!record)
-    return std::unexpected(record.error());
-  if (!isExternalStatus(record->status) || record->activeService.empty())
-    return std::unexpected(error(device.name + " hat keinen offenen externen Service"));
-  record->status = status::DoneExternal;
+    return record;
+  if (!isExternalWorkStatus(record->status) || record->activeService.empty())
+    return std::unexpected(error(device.name + " hat keinen laufenden externen Service"));
   const fs::path localCopy = externCopyFor(device);
-  const fs::path work = localCopy / util::pathFromUtf8(record->activeService);
-  auto result = finalize(device, std::move(*record), work, checklist, html, session);
-  if (!result)
-    return result;
-  if (auto s = mEnv.externStore.remove(device.name); !s)
+  if (!util::isDirectory(device.path))
+    return std::unexpected(error("Geräteordner nicht erreichbar: " + u8(device.path)));
+  if (!util::isDirectory(localCopy))
+    return std::unexpected(error("Lokale Kopie nicht gefunden: " + u8(localCopy)));
+
+  // 1. last checklist sync: changes made on the server meanwhile are not overwritten
+  const fs::path localService = localCopy / util::pathFromUtf8(record->activeService);
+  for (const auto &file : checklistFiles(localService)) {
+    auto doc = checklist::ChecklistDocument::load(file);
+    if (!doc)
+      return std::unexpected(doc.error());
+    if (auto synced = doc->syncWithMirror(*mirrorOf(device, file), localCopy, device.path); !synced)
+      return std::unexpected(synced.error());
+  }
+  // 2. local device folder over the original
+  if (auto s = util::copyTree(localCopy, device.path); !s)
+    return std::unexpected(s.error());
+  // 3. attachment paths of the copied checklists point to the server again
+  const fs::path serverService = device.path / util::pathFromUtf8(record->activeService);
+  for (const auto &file : checklistFiles(serverService)) {
+    auto doc = checklist::ChecklistDocument::load(file);
+    if (!doc)
+      return std::unexpected(doc.error());
+    if (checklist::relocateAttachments(doc->data(), localCopy, device.path) > 0)
+      if (auto s = doc->save(); !s)
+        return std::unexpected(s.error());
+  }
+
+  record->status = status::ExternFinished;
+  record->services = listServices(device);
+  if (auto s = mEnv.syncStore.upsert(*record); !s)
+    return std::unexpected(s.error());
+  if (auto s = mEnv.externStore.upsert(*record); !s)
     return std::unexpected(s.error());
   if (auto s = util::removeAll(localCopy); !s)
     log::warning("Lokale Kopie konnte nicht gelöscht werden: {}", s.error().message);
-  return result;
+  log::info("Externer Service zurückgeführt: {} {}", device.name, record->activeService);
+  return record;
 }
 
 util::Status ServiceManager::cancelExternService(const devices::Device &device) {
@@ -321,6 +376,8 @@ util::Status ServiceManager::cancelExternService(const devices::Device &device) 
 }
 
 bool shouldAdvanceStatus(const checklist::Checklist &checklist, const checklist::Section &section, std::string_view currentStatus) {
+  if (isExternalWorkStatus(currentStatus) || currentStatus == status::ExternFinished)
+    return false;
   int oldIndex = -1;
   int newIndex = -1;
   for (int i = 0; i < static_cast<int>(checklist.sections.size()); ++i) {

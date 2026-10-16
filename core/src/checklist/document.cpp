@@ -88,4 +88,91 @@ util::Status ChecklistDocument::saveAs(const util::fs::path &path) {
   return {};
 }
 
+namespace {
+
+/// Relative path of `path` below `root` (empty if it is not below `root`).
+util::fs::path relativeBelow(const util::fs::path &path, const util::fs::path &root) {
+  const auto rel = path.lexically_normal().lexically_relative(root.lexically_normal());
+  if (rel.empty() || rel.native().starts_with(util::fs::path("..").native()))
+    return {};
+  return rel;
+}
+
+/// Copies attachment files of `checklist` that exist below `from` but are missing below `to`.
+void copyMissingAttachments(const Checklist &checklist, const util::fs::path &from, const util::fs::path &to) {
+  for (const auto &section : checklist.sections) {
+    forEachTask(section, [&](const Task &task) {
+      for (const auto &attachment : task.attachments) {
+        const auto source = util::pathFromUtf8(attachment);
+        const auto rel = relativeBelow(source, from);
+        if (rel.empty() || !util::pathExists(source) || util::pathExists(to / rel))
+          continue;
+        if (auto s = util::copyFile(source, to / rel); !s)
+          log::warning("Anhang konnte nicht kopiert werden: {}", s.error().message);
+      }
+    });
+  }
+}
+
+} // namespace
+
+std::size_t relocateAttachments(Checklist &checklist, const util::fs::path &from, const util::fs::path &to) {
+  std::size_t changed = 0;
+  for (auto &section : checklist.sections) {
+    forEachTask(section, [&](Task &task) {
+      for (auto &attachment : task.attachments) {
+        const auto rel = relativeBelow(util::pathFromUtf8(attachment), from);
+        if (rel.empty())
+          continue;
+        attachment = util::pathToUtf8(to / rel);
+        ++changed;
+      }
+    });
+  }
+  return changed;
+}
+
+util::Result<std::size_t> ChecklistDocument::syncWithMirror(const util::fs::path &mirrorFile, const util::fs::path &localRoot,
+                                                            const util::fs::path &mirrorRoot) {
+  if (!isOpen())
+    return std::unexpected(util::Error{"Keine Checkliste geöffnet"});
+  // Local changes first, so the mirror receives the current state
+  if (auto saved = save(); !saved)
+    return saved;
+
+  Checklist local = mData;
+  relocateAttachments(local, localRoot, mirrorRoot);
+  if (!util::pathExists(mirrorFile)) {
+    ChecklistDocument created(mirrorFile, std::move(local));
+    if (auto s = created.saveAs(mirrorFile); !s)
+      return std::unexpected(s.error());
+    copyMissingAttachments(mData, localRoot, mirrorRoot);
+    log::info("Checkliste gespiegelt (neu): {}", util::pathToUtf8(mirrorFile));
+    return 0;
+  }
+
+  auto mirror = load(mirrorFile);
+  if (!mirror)
+    return std::unexpected(mirror.error());
+  // mirror -> local
+  Checklist remote = mirror->data();
+  relocateAttachments(remote, mirrorRoot, localRoot);
+  const std::size_t pulled = mergeNewer(mData, remote);
+  copyMissingAttachments(mirror->data(), mirrorRoot, localRoot);
+  // local -> mirror
+  const std::size_t pushed = mergeNewer(mirror->data(), local);
+  if (pushed > 0) {
+    if (auto s = mirror->save(); !s)
+      return std::unexpected(s.error());
+    copyMissingAttachments(mData, localRoot, mirrorRoot);
+  }
+  if (pulled > 0) {
+    if (auto s = save(); !s)
+      return s;
+  }
+  if (pulled > 0 || pushed > 0)
+    log::info("Checkliste gespiegelt ({} übernommen, {} übertragen): {}", pulled, pushed, util::pathToUtf8(mirrorFile));
+  return pulled;
+}
+
 } // namespace st::checklist

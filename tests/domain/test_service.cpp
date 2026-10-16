@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "st/checklist/actions.h"
+#include "st/checklist/document.h"
 #include "st/checklist/formats.h"
 #include "st/service/service_manager.h"
 #include "test_helpers.h"
@@ -39,9 +41,11 @@ struct Fixture {
     env.syncStore = RecordStore(dir / "sync/Sync.json");
     env.externStore = RecordStore(dir / "sync/extern.json");
     env.history = HistoryStore(dir / "sync/History.json");
+    env.externHistory = HistoryStore(dir / "sync/History_extern.json");
     env.configs = &configs;
     REQUIRE(env.syncStore.ensureExists());
     REQUIRE(env.history.ensureExists());
+    REQUIRE(env.externHistory.ensureExists());
     manager = std::make_unique<ServiceManager>(env);
   }
 
@@ -95,6 +99,10 @@ TEST_CASE("status helpers") {
   CHECK(isClosedStatus("erledigt"));
   CHECK(isClosedStatus("erledigt extern"));
   CHECK_FALSE(isClosedStatus("Wareneingang"));
+  CHECK_FALSE(isClosedStatus("extern abgeschlossen")); // still has to be finished in house
+  CHECK(isExternalWorkStatus("geplant extern"));
+  CHECK(isExternalWorkStatus("extern"));
+  CHECK_FALSE(isExternalWorkStatus("extern abgeschlossen"));
   CHECK(ServiceManager::serviceFolderName("2026.01.02") == "Service_2026.01.02");
   CHECK(ServiceManager::serviceDate("Service_2026.01.02") == "2026.01.02");
 }
@@ -173,7 +181,7 @@ TEST_CASE("in house service: complete workflow") {
   CHECK((*m.recordFor(f.device)).status.empty());
 }
 
-TEST_CASE("external service: plan, work locally, finish") {
+TEST_CASE("external service: plan, work locally, finish extern, finish service") {
   Fixture f;
   auto &m = *f.manager;
   test::writeText(f.device.path / "Service_2020.01.01/alt.txt", "alter Service");
@@ -183,28 +191,92 @@ TEST_CASE("external service: plan, work locally, finish") {
   REQUIRE(planned.has_value());
   CHECK(planned->status == "geplant extern");
   CHECK(planned->additionalInfo == "Geplant für: 2026.04.01\nKunde: Extern");
-  CHECK(util::pathExists(f.device.path / "Service_2026.04.01/0601-1234_Checklist_2026.04.01.json"));
+  const auto serverChecklist = f.device.path / "Service_2026.04.01/0601-1234_Checklist_2026.04.01.json";
+  CHECK(util::pathExists(serverChecklist));
   const auto local = m.externCopyFor(f.device);
   CHECK(util::pathExists(local / "Service_2020.01.01/alt.txt")); // complete device copy
-  CHECK((*f.manager->environment().externStore.find("0601-1234")).has_value());
+  CHECK((*m.environment().externStore.find("0601-1234")).has_value());
 
-  // the checklist of the local copy is used
+  // the checklist of the local copy is used, its mirror is the file on the server
   auto path = m.findChecklist(f.device, "Service_2026.04.01", *planned);
   REQUIRE(path.has_value());
   CHECK(path->parent_path() == local / "Service_2026.04.01");
+  CHECK(m.mirrorOf(f.device, *path) == serverChecklist);
+  CHECK_FALSE(m.mirrorOf(f.device, f.dir / "anderswo/Checklist.json").has_value());
 
-  // in house finish is refused for external services
+  // finishing in house is refused while the technician works on the copy
   CHECK_FALSE(m.finishService(f.device, nullptr, {}, f.ts.session).has_value());
 
+  // work at the customer (local) and a colleague in house (server) at the same time
+  {
+    auto localDoc = checklist::ChecklistDocument::load(*path);
+    REQUIRE(localDoc.has_value());
+    auto &table = std::get<checklist::TaskTable>(localDoc->data().sections[0].items[0]);
+    table.rows[0].tasks[0].value = 200.0;
+    checklist::stamp(table.rows[0].tasks[0], f.ts.session);
+    REQUIRE(localDoc->save());
+  }
+  {
+    auto serverDoc = checklist::ChecklistDocument::load(serverChecklist);
+    REQUIRE(serverDoc.has_value());
+    f.ts.advance(10);
+    auto &table = std::get<checklist::TaskTable>(serverDoc->data().sections[0].items[0]);
+    table.rows[1].tasks[0].value = 75.0;
+    checklist::stamp(table.rows[1].tasks[0], f.ts.session);
+    REQUIRE(serverDoc->save());
+  }
   test::writeText(local / "Service_2026.04.01/bericht.txt", "beim Kunden erstellt");
-  auto finished = m.finishExternService(f.device, nullptr, {}, f.ts.session);
+
+  auto back = m.finishExternService(f.device);
+  REQUIRE(back.has_value());
+  CHECK(back->status == "extern abgeschlossen");
+  CHECK(util::pathExists(f.device.path / "Service_2026.04.01/bericht.txt"));
+  CHECK_FALSE(util::pathExists(local)); // local copy removed
+  CHECK((*m.environment().externStore.find("0601-1234")).has_value());
+  CHECK((*m.environment().syncStore.find("0601-1234"))->status == "extern abgeschlossen");
+  {
+    // both changes survive the copy back
+    auto merged = checklist::ChecklistDocument::load(serverChecklist);
+    REQUIRE(merged.has_value());
+    const auto &table = std::get<checklist::TaskTable>(merged->data().sections[0].items[0]);
+    CHECK(std::get<double>(table.rows[0].tasks[0].value) == 200.0);
+    CHECK(std::get<double>(table.rows[1].tasks[0].value) == 75.0);
+  }
+  CHECK_FALSE(m.finishExternService(f.device).has_value()); // only once
+
+  // "Service fertigmelden" in house
+  f.ts.advance(3 * 24 * 3600);
+  const auto server = checklist::ChecklistDocument::load(serverChecklist);
+  REQUIRE(server.has_value());
+  auto finished = m.finishService(f.device, &server->data(), {}, f.ts.session);
   REQUIRE(finished.has_value());
   CHECK(finished->record.status == "erledigt extern");
-  CHECK(util::pathExists(f.device.path / "Service_2026.04.01/bericht.txt"));
-  CHECK_FALSE(util::pathExists(local));
-  CHECK_FALSE((*f.manager->environment().externStore.find("0601-1234")).has_value());
-  CHECK(loadHistoryRows(f.dir / "sync/History.json")->size() == 1);
-  CHECK_FALSE(m.finishExternService(f.device, nullptr, {}, f.ts.session).has_value());
+  CHECK(util::pathExists(finished->reportFile));
+  CHECK_FALSE((*m.environment().externStore.find("0601-1234")).has_value());
+  auto externRows = loadHistoryRows(f.dir / "sync/History_extern.json");
+  REQUIRE(externRows.has_value());
+  REQUIRE(externRows->size() == 1);
+  CHECK((*externRows)[0].totalPrice == doctest::Approx(275.0));
+  CHECK(loadHistoryRows(f.dir / "sync/History.json")->empty()); // not in the in house history
+}
+
+TEST_CASE("external service: device folder not reachable") {
+  Fixture f;
+  REQUIRE(f.manager->createExternService(f.device, "2026.04.01", "", f.ts.session).has_value());
+  util::fs::rename(f.device.path, f.dir / "offline");
+  CHECK_FALSE(f.manager->finishExternService(f.device).has_value());
+  CHECK(util::pathExists(f.manager->externCopyFor(f.device))); // nothing is lost
+}
+
+TEST_CASE("external service uses the extern templates") {
+  Fixture f;
+  test::writeText(f.dir / "templates/Checklist_extern.json", checklist::writeJson(Fixture::templateChecklist()));
+  auto config = *f.configs.find("0601");
+  config.filesExtern = {devices::TemplateFile{util::pathToUtf8(f.dir / "templates/Checklist_extern.json"), "{reader}_Checklist_extern.json"}};
+  REQUIRE(f.configs.upsert(config));
+  REQUIRE(f.manager->createExternService(f.device, "2026.04.01", "", f.ts.session).has_value());
+  CHECK(util::pathExists(f.device.path / "Service_2026.04.01/0601-1234_Checklist_extern.json"));
+  CHECK_FALSE(util::pathExists(f.device.path / "Service_2026.04.01/0601-1234_Checklist_2026.04.01.json"));
 }
 
 TEST_CASE("external service can be cancelled") {
@@ -266,4 +338,7 @@ TEST_CASE("status advance logic of update_status_rinfo") {
   CHECK(shouldAdvanceStatus(c, c.sections[2], "Technik"));
   CHECK_FALSE(shouldAdvanceStatus(c, c.sections[0], "Technik"));
   CHECK(shouldAdvanceStatus(c, c.sections[0], "irgendwas"));
+  // the external workflow status is never replaced by the checklist
+  for (const char *external : {"geplant extern", "extern", "extern abgeschlossen"})
+    CHECK_FALSE(shouldAdvanceStatus(c, c.sections[2], external));
 }

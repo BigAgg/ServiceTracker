@@ -62,6 +62,48 @@ bool folderList(const char *id, std::vector<std::string> &folders, std::string &
   return changed;
 }
 
+/// Editable list of template files (source + target name). Returns true when changed.
+bool templateList(const char *id, std::vector<devices::TemplateFile> &files) {
+  ui::ScopedId scope(id);
+  bool changed = false;
+  std::size_t remove = files.size();
+  if (!files.empty() && ImGui::BeginTable("##files", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+    ImGui::TableSetupColumn("Quelle");
+    ImGui::TableSetupColumn("Zielname");
+    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 30.0f);
+    ImGui::TableHeadersRow();
+    for (std::size_t i = 0; i < files.size(); ++i) {
+      ui::ScopedId fid(static_cast<int>(i));
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex(0);
+      ImGui::TextUnformatted(files[i].path.c_str());
+      if (!util::pathExists(util::pathFromUtf8(files[i].path)))
+        ui::errorText("Datei nicht gefunden");
+      ImGui::TableSetColumnIndex(1);
+      ImGui::SetNextItemWidth(-FLT_MIN);
+      changed |= ImGui::InputText("##rename", &files[i].rename);
+      ImGui::TableSetColumnIndex(2);
+      if (ImGui::SmallButton("x"))
+        remove = i;
+      ImGui::SetItemTooltip("Vorlage entfernen");
+    }
+    ImGui::EndTable();
+  }
+  if (remove < files.size()) {
+    files.erase(files.begin() + static_cast<std::ptrdiff_t>(remove));
+    changed = true;
+  }
+  if (ImGui::Button("Datei hinzufügen...")) {
+    const auto path = platform::openFileDialog();
+    if (!path.empty()) {
+      const auto fileName = util::pathToUtf8(util::pathFromUtf8(path).filename());
+      files.push_back({path, "{reader}_" + fileName});
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 } // namespace
 
 bool ConfigsModule::available(const AppContext &ctx) const { return ctx.isPoweruser(); }
@@ -165,40 +207,20 @@ void ConfigsModule::drawEditor(AppContext &ctx) {
 
   if (ImGui::CollapsingHeader("Vorlagen (Dateien kopieren)", ImGuiTreeNodeFlags_DefaultOpen)) {
     ui::hintText("Platzhalter im Zielnamen: {reader} = Gerätename, {service} = Datum des Service.");
-    std::size_t remove = c.files.size();
-    if (ImGui::BeginTable("##files", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
-      ImGui::TableSetupColumn("Quelle");
-      ImGui::TableSetupColumn("Zielname");
-      ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 30.0f);
-      ImGui::TableHeadersRow();
-      for (std::size_t i = 0; i < c.files.size(); ++i) {
-        ui::ScopedId id(static_cast<int>(i));
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::TextUnformatted(c.files[i].path.c_str());
-        if (!util::pathExists(util::pathFromUtf8(c.files[i].path)))
-          ui::errorText("Datei nicht gefunden");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        if (ImGui::InputText("##rename", &c.files[i].rename))
-          mDirty = true;
-        ImGui::TableSetColumnIndex(2);
-        if (ImGui::SmallButton("x"))
-          remove = i;
-      }
-      ImGui::EndTable();
-    }
-    if (remove < c.files.size()) {
-      c.files.erase(c.files.begin() + static_cast<std::ptrdiff_t>(remove));
-      mDirty = true;
-    }
-    if (ImGui::Button("Datei hinzufügen...")) {
-      const auto path = platform::openFileDialog();
-      if (!path.empty()) {
-        const auto fileName = util::pathToUtf8(util::pathFromUtf8(path).filename());
-        c.files.push_back({path, "{reader}_" + fileName});
+    mDirty |= templateList("files", c.files);
+  }
+
+  if (ImGui::CollapsingHeader("Vorlagen für externe Services", ImGuiTreeNodeFlags_DefaultOpen)) {
+    ui::hintText(c.filesExtern.empty() ? "Keine eigenen Vorlagen – externe Services verwenden die normalen Vorlagen."
+                                       : "Externe Services verwenden nur diese Vorlagen (z. B. eigene Checkliste).");
+    mDirty |= templateList("filesExtern", c.filesExtern);
+    if (c.filesExtern.empty() && !c.files.empty()) {
+      ImGui::SameLine();
+      if (ImGui::Button("Normale Vorlagen übernehmen")) {
+        c.filesExtern = c.files;
         mDirty = true;
       }
+      ImGui::SetItemTooltip("Kopiert die normalen Vorlagen als Ausgangspunkt");
     }
   }
 

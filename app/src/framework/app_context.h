@@ -26,7 +26,17 @@ namespace st::app {
 /// The checklist currently opened for the selected service. Shared by the
 /// checklist, service and extern modules.
 struct ChecklistSession {
+  /// External service: the checklist on the server the local copy is mirrored with.
+  struct Mirror {
+    util::fs::path file;
+    util::fs::path localRoot;
+    util::fs::path serverRoot;
+  };
+
   std::optional<checklist::ChecklistDocument> doc;
+  std::optional<Mirror> mirror;
+  /// State of the mirror for the checklist window ("Synchronisiert 10:21:03" ...).
+  std::string mirrorState;
   /// Local changes that are not written yet.
   bool dirty = false;
   std::chrono::steady_clock::time_point lastEdit{};

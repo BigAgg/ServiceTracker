@@ -102,6 +102,21 @@ TEST_CASE("config store keeps unknown keys and the legacy layout") {
   CHECK_FALSE((*saved)[0].contains("baseFlags"));
   CHECK((*saved)[1]["baseFlags"].size() == 2);
 
+  // Extern templates: optional key, falls back to the normal templates
+  CHECK_FALSE((*saved)[0].contains("filesExtern"));
+  CHECK(&c->templatesFor(true) == &c->files);
+  edited.filesExtern = {TemplateFile{"Y:/tpl/Checklist_extern.json", "{reader}_Checklist_extern.json"}};
+  REQUIRE(store.upsert(edited));
+  DeviceConfigStore withExtern(file);
+  REQUIRE(withExtern.load());
+  const DeviceConfig *e = withExtern.find("0601");
+  REQUIRE(e);
+  CHECK(e->templatesFor(true) == edited.filesExtern);
+  CHECK(e->templatesFor(false) == e->files);
+  edited.filesExtern.clear();
+  REQUIRE(store.upsert(edited));
+  CHECK_FALSE((*util::json::load(file))[0].contains("filesExtern"));
+
   REQUIRE(store.remove("0471"));
   DeviceConfigStore again(file);
   REQUIRE(again.load());

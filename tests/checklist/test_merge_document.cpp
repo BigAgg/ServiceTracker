@@ -198,3 +198,66 @@ TEST_CASE("document: attachments folder lives next to the file") {
   ChecklistDocument doc("/x/y/Checklist.json", {});
   CHECK(doc.attachmentsDir() == std::filesystem::path("/x/y/attachments"));
 }
+
+TEST_CASE("document: two-way mirror with attachments (external service)") {
+  test::TempDir dir;
+  const auto localRoot = dir / "local/0601-1";
+  const auto serverRoot = dir / "server/0601-1";
+  const auto localFile = localRoot / "Service_2026.01.01/Checklist.json";
+  const auto serverFile = serverRoot / "Service_2026.01.01/Checklist.json";
+
+  ChecklistDocument seed(localFile, sample());
+  REQUIRE(seed.saveAs(localFile));
+  auto local = ChecklistDocument::load(localFile);
+  REQUIRE(local.has_value());
+
+  // missing mirror is created
+  CHECK(*local->syncWithMirror(serverFile, localRoot, serverRoot) == 0);
+  REQUIRE(st::util::pathExists(serverFile));
+
+  test::TestSession ts;
+  // local: value + attachment in the local attachments folder
+  const auto localPicture = local->attachmentsDir() / "bild.png";
+  test::writeText(localPicture, "png");
+  single(local->data()).value = true;
+  single(local->data()).attachments = {st::util::pathToUtf8(localPicture)};
+  stamp(single(local->data()), ts.session);
+  // server: a colleague edits another task later
+  {
+    auto server = ChecklistDocument::load(serverFile);
+    REQUIRE(server.has_value());
+    ts.advance(5);
+    group(server->data()).tasks[0].value = 7;
+    stamp(group(server->data()).tasks[0], ts.session);
+    REQUIRE(server->save());
+  }
+
+  auto pulled = local->syncWithMirror(serverFile, localRoot, serverRoot);
+  REQUIRE(pulled.has_value());
+  CHECK(*pulled == 1);
+  CHECK(std::get<int>(group(local->data()).tasks[0].value) == 7);
+
+  auto server = ChecklistDocument::load(serverFile);
+  REQUIRE(server.has_value());
+  CHECK(std::get<bool>(single(server->data()).value));
+  // the server version points to the server copy of the attachment
+  const auto serverPicture = serverRoot / "Service_2026.01.01/attachments/bild.png";
+  REQUIRE(single(server->data()).attachments.size() == 1);
+  CHECK(st::util::pathFromUtf8(single(server->data()).attachments[0]) == serverPicture);
+  CHECK(test::readText(serverPicture) == "png");
+  // ... while the local version keeps the local path
+  CHECK(st::util::pathFromUtf8(single(local->data()).attachments[0]) == localPicture);
+
+  // nothing new: no further writes
+  const auto before = st::util::lastWriteTime(serverFile);
+  CHECK(*local->syncWithMirror(serverFile, localRoot, serverRoot) == 0);
+  CHECK(st::util::lastWriteTime(serverFile) == before);
+}
+
+TEST_CASE("document: relocate attachments") {
+  Checklist c = sample();
+  single(c).attachments = {"C:/extern/0601-1/Service/attachments/a.png", "D:/andere/b.png"};
+  CHECK(relocateAttachments(c, st::util::pathFromUtf8("C:/extern/0601-1"), st::util::pathFromUtf8("Y:/Geraete/0601-1")) == 1);
+  CHECK(st::util::pathFromUtf8(single(c).attachments[0]) == st::util::pathFromUtf8("Y:/Geraete/0601-1/Service/attachments/a.png"));
+  CHECK(single(c).attachments[1] == "D:/andere/b.png");
+}

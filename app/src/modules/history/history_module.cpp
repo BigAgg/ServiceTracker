@@ -52,7 +52,10 @@ void HistoryModule::update(AppContext &ctx) {
 }
 
 std::vector<util::fs::path> HistoryModule::sources(const AppContext &ctx) const {
-  std::vector<util::fs::path> out = {ctx.paths().historyFile(), ctx.paths().syncFile()};
+  std::vector<util::fs::path> out = {ctx.paths().historyFile()};
+  if (util::pathExists(ctx.paths().externHistoryFile()))
+    out.push_back(ctx.paths().externHistoryFile());
+  out.push_back(ctx.paths().syncFile());
   if (const auto externFile = util::pathFromUtf8(ctx.paths().externFile); util::pathExists(externFile))
     out.push_back(externFile);
   for (const auto &file : util::listDirectory(ctx.paths().oldHistoryDir(), false, true))
@@ -157,7 +160,7 @@ void HistoryModule::drawWindow(AppContext &ctx) {
       if (!in.empty()) {
         const auto out = platform::saveFileDialog({"Historie:json"});
         const auto outPath = util::pathFromUtf8(out);
-        if (!out.empty() && outPath != ctx.paths().historyFile() && outPath != ctx.paths().syncFile()) {
+        if (!out.empty() && outPath != ctx.paths().historyFile() && outPath != ctx.paths().externHistoryFile() && outPath != ctx.paths().syncFile()) {
           if (auto csv = util::readFile(util::pathFromUtf8(in)); ctx.notify.check(csv, "CSV lesen")) {
             const auto json = service::convertLegacyServiceList(*csv, ctx.deviceRegistry);
             if (ctx.notify.check(util::json::save(outPath, json), "Konvertieren"))

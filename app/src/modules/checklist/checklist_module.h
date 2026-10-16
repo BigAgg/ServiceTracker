@@ -32,10 +32,13 @@ private:
   void drawToolbar(AppContext &ctx, checklist::ChecklistDocument &doc, bool editor);
   void drawRecordPopup(AppContext &ctx);
   void updateAttention(AppContext &ctx);
+  /// External service: two-way sync of the local checklist with the server copy.
+  void syncMirror(AppContext &ctx);
 
   ChecklistViewState mWorkState;
   ChecklistViewState mEditorState;
   PollTimer mRefresh;
+  PollTimer mMirrorPoll;
 
   // Editor: optional separate template document
   std::optional<checklist::ChecklistDocument> mTemplate;

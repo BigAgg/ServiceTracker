@@ -20,8 +20,10 @@
 #include "modules/users/users_module.h"
 
 #include <st/checklist/actions.h>
+#include <st/checklist/document.h>
 #include <st/checklist/formats.h>
 #include <st/orders/order_store.h>
+#include <st/service/history.h>
 #include <st/users/user_store.h>
 #include <st/util/json.h>
 #include <st/util/log.h>
@@ -420,6 +422,51 @@ int main() {
       ctx.applyRecord(*planned);
     frames(5);
     sweep("extern");
+
+    std::puts("frames: external service – local checklist mirrored with the device folder");
+    {
+      SMOKE_CHECK(ctx.checklist().isOpen() && ctx.checklist().mirror.has_value());
+      const auto serverChecklist = device / "Service_2026.12.01" / "0601-1234_Checklist.json";
+      SMOKE_CHECK(fs::exists(serverChecklist));
+      if (ctx.checklist().isOpen() && ctx.checklist().mirror) {
+        SMOKE_CHECK(ctx.checklist().doc->path().native().starts_with((root / "local").native()));
+        auto &task = std::get<checklist::Task>(ctx.checklist().doc->data().sections[0].items[0]);
+        task.value = true;
+        checklist::stamp(task, ctx.session());
+        ctx.checklist().markDirty();
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        frames(3);
+        SMOKE_CHECK(ctx.checklist().mirrorState.starts_with("Mit Geräteordner synchronisiert"));
+        auto server = checklist::ChecklistDocument::load(serverChecklist);
+        SMOKE_CHECK(server && std::get<bool>(std::get<checklist::Task>(server->data().sections[0].items[0]).value));
+      }
+
+      std::puts("frames: extern abschließen, service fertigmelden");
+      auto back = ctx.services().finishExternService(*ctx.activeDevice());
+      SMOKE_CHECK(back.has_value());
+      if (back) {
+        ctx.applyRecord(*back);
+        const std::string service = ctx.selectedService();
+        ctx.selectService({});
+        ctx.selectService(service);
+      }
+      frames(5);
+      SMOKE_CHECK(ctx.activeRecord().status == "extern abgeschlossen");
+      SMOKE_CHECK(!fs::exists(root / "local" / "extern" / "0601-1234"));
+      SMOKE_CHECK(ctx.checklist().isOpen() && !ctx.checklist().mirror);
+      SMOKE_CHECK(ctx.checklist().isOpen() && ctx.checklist().doc->path() == serverChecklist);
+      sweep("extern finished");
+      if (ctx.checklist().isOpen()) {
+        auto done = ctx.services().finishService(*ctx.activeDevice(), &ctx.checklist().doc->data(), app::ServiceModule::htmlOptions(ctx), ctx.session());
+        SMOKE_CHECK(done.has_value());
+        if (done)
+          ctx.applyRecord(done->record);
+      }
+      frames(3);
+      SMOKE_CHECK(ctx.activeRecord().status == "erledigt extern");
+      auto externHistory = service::loadHistoryRows(sync / "History_extern.json");
+      SMOKE_CHECK(externHistory && externHistory->size() == 1);
+    }
 
     std::puts("frames: device received by another user");
     {

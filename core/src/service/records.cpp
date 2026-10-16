@@ -15,6 +15,8 @@ bool isClosedStatus(std::string_view value) {
   return value.empty() || value == status::Done || value == status::DoneExternal;
 }
 
+bool isExternalWorkStatus(std::string_view value) { return value == status::PlannedExternal || value == status::External; }
+
 ServiceRecord recordFromJson(const Json &j) {
   ServiceRecord r;
   r.name = util::json::str(j, "name");

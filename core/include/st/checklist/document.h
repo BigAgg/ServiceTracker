@@ -49,6 +49,14 @@ public:
   /// Writes to a different path (format by extension) and continues with that path.
   util::Status saveAs(const util::fs::path &path);
 
+  /// Two-way sync with a mirror of this checklist in another folder tree (external
+  /// service: local copy <-> device folder on the server). Newer elements win in both
+  /// directions (see merge.h); attachment paths are translated between `localRoot` and
+  /// `mirrorRoot` and missing attachment files are copied. A missing mirror file is
+  /// created. Returns the number of elements taken over from the mirror.
+  util::Result<std::size_t> syncWithMirror(const util::fs::path &mirrorFile, const util::fs::path &localRoot,
+                                           const util::fs::path &mirrorRoot);
+
 private:
   util::Result<std::size_t> mergeFromDisk(std::string *diskContent);
 
@@ -56,5 +64,9 @@ private:
   Checklist mData;
   std::int64_t mLastWrite = 0;
 };
+
+/// Rewrites attachment paths below `from` to the same relative path below `to`
+/// (e.g. after copying a folder tree). Returns the number of changed paths.
+std::size_t relocateAttachments(Checklist &checklist, const util::fs::path &from, const util::fs::path &to);
 
 } // namespace st::checklist

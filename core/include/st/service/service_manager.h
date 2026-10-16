@@ -17,8 +17,14 @@
 /// In house:  createService -> (checklist is edited in the sync folder) -> finishService
 ///            finishService copies the sync folder into the device folder, writes the
 ///            service record (HTML) and appends the service to the history.
-/// External:  createExternService copies the device folder to the local working copy,
-///            finishExternService copies the service folder back and deletes the copy.
+/// External:  createExternService creates the service on the server (extern templates)
+///            and copies the device folder to the local working copy. While working in
+///            house the checklist of the copy is mirrored with the server
+///            (ChecklistDocument::syncWithMirror, see mirrorOf). finishExternService
+///            ("Extern abschließen") syncs a last time, copies the local device folder over
+///            the original, deletes the copy and sets "extern abgeschlossen".
+///            finishService ("Service fertigmelden") then writes the service record and
+///            the entry in History_extern.json.
 namespace st::service {
 
 /// Section action that sets the device status to the section's postActionArgs.
@@ -32,6 +38,8 @@ struct ServiceEnvironment {
   RecordStore syncStore;
   RecordStore externStore;
   HistoryStore history;
+  /// History of external services (History_extern.json).
+  HistoryStore externHistory;
   /// Optional; without configs no extra folders/templates are created.
   const devices::DeviceConfigStore *configs = nullptr;
 
@@ -70,6 +78,10 @@ public:
   /// Checklist file of a service: local external copy, service folder, sync folder (in that order).
   std::optional<util::fs::path> findChecklist(const devices::Device &device, std::string_view service, const ServiceRecord &record) const;
 
+  /// Counterpart on the server of a file inside the local external copy (same relative
+  /// path below the device folder). Empty if `file` is not inside the local copy.
+  std::optional<util::fs::path> mirrorOf(const devices::Device &device, const util::fs::path &file) const;
+
   /// Starts an in house service for today.
   util::Result<ServiceRecord> createService(const devices::Device &device, const util::Session &session);
 
@@ -80,15 +92,19 @@ public:
   util::Result<ServiceRecord> setAdditionalInfo(const devices::Device &device, const std::string &info);
   util::Status removeFromList(const devices::Device &device);
 
-  /// Finishes the running in house service. `checklist` (may be null) is exported as service record.
+  /// Finishes the running service ("Service fertigmelden"). `checklist` (may be null) is
+  /// exported as service record. In house: entry in History.json. External services
+  /// (status "extern abgeschlossen"): status "erledigt extern", entry in
+  /// History_extern.json, removed from extern.json.
   util::Result<FinishResult> finishService(const devices::Device &device, const checklist::Checklist *checklist,
                                            const checklist::HtmlOptions &html, const util::Session &session);
 
   /// Plans an external service on `date` ("YYYY.MM.DD").
   util::Result<ServiceRecord> createExternService(const devices::Device &device, const std::string &date, const std::string &info, const util::Session &session);
-  /// Finishes an external service: copies the work back and removes the local copy.
-  util::Result<FinishResult> finishExternService(const devices::Device &device, const checklist::Checklist *checklist,
-                                                 const checklist::HtmlOptions &html, const util::Session &session);
+  /// "Extern abschließen": merges the checklists of the local copy with the server a
+  /// last time, copies the local device folder over the original, deletes the local
+  /// copy and sets "extern abgeschlossen". Requires access to the device folder.
+  util::Result<ServiceRecord> finishExternService(const devices::Device &device);
   /// Removes an external service from both lists. The local copy is kept.
   util::Status cancelExternService(const devices::Device &device);
 
@@ -97,16 +113,19 @@ public:
 
 private:
   util::Status createServiceFolders(const devices::Device &device, const util::fs::path &serviceFolder) const;
-  util::Status copyTemplates(const devices::Device &device, const std::string &date, const util::fs::path &target) const;
+  util::Status copyTemplates(const devices::Device &device, const std::string &date, const util::fs::path &target, bool external) const;
   util::Result<FinishResult> finalize(const devices::Device &device, ServiceRecord record, const util::fs::path &workFolder,
-                                      const checklist::Checklist *checklist, const checklist::HtmlOptions &html, const util::Session &session);
+                                      const checklist::Checklist *checklist, const checklist::HtmlOptions &html, const HistoryStore &history,
+                                      const util::Session &session);
 
   ServiceEnvironment mEnv;
 };
 
 /// Logic of the "update_status_rinfo" section action: the status `section.postActionArgs`
 /// is only applied if the section comes after the section that set the current status,
-/// so finishing sections out of order never moves the status backwards.
+/// so finishing sections out of order never moves the status backwards. The status of
+/// an external service ("geplant extern", "extern", "extern abgeschlossen") is never
+/// replaced – it controls the external workflow.
 bool shouldAdvanceStatus(const checklist::Checklist &checklist, const checklist::Section &section, std::string_view currentStatus);
 
 } // namespace st::service

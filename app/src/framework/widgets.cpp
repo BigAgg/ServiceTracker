@@ -106,6 +106,8 @@ ImVec4 statusColor(std::string_view status) {
     return ImVec4(0.60f, 0.70f, 0.95f, 1.0f);
   if (status == s::PlannedExternal || status == s::External)
     return ImVec4(0.80f, 0.60f, 0.95f, 1.0f);
+  if (status == s::ExternFinished)
+    return ImVec4(0.55f, 0.80f, 0.90f, 1.0f);
   if (status.empty())
     return ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
   return ImVec4(0.95f, 0.75f, 0.30f, 1.0f);

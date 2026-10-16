@@ -116,11 +116,13 @@ void ExternModule::drawWindow(AppContext &ctx) {
   auto *device = ctx.activeDevice();
   const auto &record = ctx.activeRecord();
   namespace s = service::status;
-  const bool externalActive = device && (record.status == s::PlannedExternal || record.status == s::External);
+  const bool externalActive = device && service::isExternalWorkStatus(record.status);
   {
-    ui::Disabled d(!externalActive);
-    if (ImGui::Button("Service abschließen"))
-      ImGui::OpenPopup("Externen Service abschließen");
+    ui::Disabled d(!externalActive || !ctx.deviceRegistry.hasAccess());
+    if (ImGui::Button("Extern abschließen"))
+      ImGui::OpenPopup("Extern abschließen");
+    ImGui::SetItemTooltip("Wieder im Haus: lokale Arbeit in den Geräteordner übernehmen.\n"
+                          "Danach in \"Service Control\" \"Service fertigmelden\".");
     ImGui::SameLine();
     if (ImGui::Button("Als \"extern\" markieren") && device) {
       if (auto r = ctx.services().setStatus(*device, s::External); ctx.notify.check(r))
@@ -140,14 +142,20 @@ void ExternModule::drawWindow(AppContext &ctx) {
       }
     }
   }
-  if (!externalActive && device)
-    ui::hintText("Gewähltes Gerät hat keinen offenen externen Service.");
+  if (device && record.status == s::ExternFinished)
+    ui::hintText("Extern abgeschlossen – in \"Service Control\" \"Service fertigmelden\" wählen.");
+  else if (!externalActive && device)
+    ui::hintText("Gewähltes Gerät hat keinen laufenden externen Service.");
+  else if (externalActive && !ctx.deviceRegistry.hasAccess())
+    ui::hintText("Geräteordner nicht erreichbar – \"Extern abschließen\" ist erst im Haus möglich.");
 
-  if (ImGui::BeginPopupModal("Externen Service abschließen", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+  if (ImGui::BeginPopupModal("Extern abschließen", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
     ImGui::Text("Externen Service für %s abschließen?", ctx.activeDeviceName().c_str());
-    ImGui::TextUnformatted("Der Service-Ordner wird aus der lokalen Kopie in den Geräteordner\n"
-                           "kopiert, die lokale Kopie wird gelöscht und der Service in die\n"
-                           "Historie übernommen.");
+    ImGui::TextUnformatted("- Checkliste wird ein letztes Mal mit dem Geräteordner abgeglichen\n"
+                           "- der lokale Geräteordner wird über den Original-Geräteordner kopiert\n"
+                           "- die lokale Kopie wird gelöscht, Status \"extern abgeschlossen\"\n\n"
+                           "Anschließend in \"Service Control\" \"Service fertigmelden\" wählen\n"
+                           "(Service Record und Eintrag in der externen Historie).");
     if (ImGui::Button("Abschließen")) {
       finish(ctx);
       ImGui::CloseCurrentPopup();
@@ -163,24 +171,22 @@ void ExternModule::finish(AppContext &ctx) {
   auto *device = ctx.activeDevice();
   if (!device)
     return;
+  // The open checklist of the local copy must be on disk; the core syncs and copies it
   auto &session = ctx.checklist();
-  const checklist::Checklist *data = nullptr;
-  // The open checklist belongs to this service if it lives in the local copy
-  if (session.doc && session.doc->path().native().starts_with(ctx.services().externCopyFor(*device).native())) {
-    checklist::finishChecklist(session.doc->data(), ctx.expressions, ctx.sectionActions, ctx.session());
-    if (!ctx.notify.check(session.doc->save(), "Checkliste speichern"))
+  if (session.dirty) {
+    ctx.events.publish(events::SaveChecklistRequest{});
+    if (session.dirty) {
+      ctx.notify.error("Checkliste konnte nicht gespeichert werden – Extern abschließen abgebrochen");
       return;
-    session.dirty = false;
-    data = &session.doc->data();
+    }
   }
-  auto result = ctx.services().finishExternService(*device, data, ServiceModule::htmlOptions(ctx), ctx.session());
-  if (!ctx.notify.check(result, "Externen Service abschließen"))
+  auto result = ctx.services().finishExternService(*device);
+  if (!ctx.notify.check(result, "Extern abschließen"))
     return;
-  ctx.applyRecord(result->record);
+  ctx.applyRecord(*result);
   reload(ctx);
-  ctx.notify.success(device->name + ": externer Service abgeschlossen");
-  if (!result->reportFile.empty())
-    platform::openPath(result->reportFile);
+  ctx.notify.success(device->name + ": extern abgeschlossen. Jetzt in \"Service Control\" fertigmelden.");
+  // the local checklist is gone: reopen the one in the device folder
   const std::string service = ctx.selectedService();
   ctx.selectService({});
   ctx.selectService(service);

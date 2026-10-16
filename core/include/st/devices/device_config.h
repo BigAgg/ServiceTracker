@@ -11,7 +11,8 @@
 /// Per project configuration (configs.json):
 ///  - which EEPROM address/value enables which hardware flag
 ///  - which folders are created for a new service (always / depending on a flag)
-///  - which template files (e.g. the checklist) are copied into a new service
+///  - which template files (e.g. the checklist) are copied into a new service, with an
+///    optional separate set for external services
 namespace st::devices {
 
 struct AddressRule {
@@ -40,11 +41,15 @@ struct DeviceConfig {
   std::vector<AddressRule> addresses;
   std::vector<std::string> folders;
   std::vector<TemplateFile> files;
+  /// Templates for external services ("filesExtern"). Empty = `files` are used.
+  std::vector<TemplateFile> filesExtern;
   /// Flags every device of this project has. If not set in configs.json the
   /// legacy defaults apply (0601 -> ABS, 0471/0472 -> FP).
   std::optional<ConfigFlags> baseFlags;
 
   bool valid() const { return !project.empty(); }
+  /// Templates copied into a new service (external: `filesExtern`, falls back to `files`).
+  const std::vector<TemplateFile> &templatesFor(bool external) const { return external && !filesExtern.empty() ? filesExtern : files; }
   ConfigFlags effectiveBaseFlags() const;
   /// Template target name with placeholders replaced.
   static std::string expandName(std::string_view pattern, std::string_view deviceName, std::string_view serviceDate);

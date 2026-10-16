@@ -50,11 +50,15 @@ DeviceConfig DeviceConfigStore::fromJson(const Json &j) {
   DeviceConfig config;
   config.project = util::json::str(j, "project");
   config.folders = util::json::strings(j, "folders");
-  for (const auto &file : util::json::array(j, "files")) {
-    TemplateFile tf{util::json::str(file, "path"), util::json::str(file, "rename")};
-    if (tf.valid())
-      config.files.push_back(std::move(tf));
-  }
+  const auto readFiles = [&j](const char *key, std::vector<TemplateFile> &out) {
+    for (const auto &file : util::json::array(j, key)) {
+      TemplateFile tf{util::json::str(file, "path"), util::json::str(file, "rename")};
+      if (tf.valid())
+        out.push_back(std::move(tf));
+    }
+  };
+  readFiles("files", config.files);
+  readFiles("filesExtern", config.filesExtern);
   for (const auto &a : util::json::array(j, "addresses")) {
     AddressRule rule;
     rule.address = static_cast<int>(util::json::integer(a, "address", 0));
@@ -78,10 +82,19 @@ Json DeviceConfigStore::toJson(const DeviceConfig &config, Json base) {
   Json j = base.is_object() ? std::move(base) : Json::object();
   j["project"] = config.project;
   j["folders"] = config.folders;
-  j["files"] = Json::array();
-  for (const auto &file : config.files)
-    if (file.valid())
-      j["files"].push_back({{"path", file.path}, {"rename", file.rename}});
+  const auto writeFiles = [](const std::vector<TemplateFile> &files) {
+    Json out = Json::array();
+    for (const auto &file : files)
+      if (file.valid())
+        out.push_back({{"path", file.path}, {"rename", file.rename}});
+    return out;
+  };
+  j["files"] = writeFiles(config.files);
+  // New key, only written when used (version 1 ignores it)
+  if (config.filesExtern.empty())
+    j.erase("filesExtern");
+  else
+    j["filesExtern"] = writeFiles(config.filesExtern);
   j["addresses"] = Json::array();
   for (const auto &rule : config.addresses) {
     if (!rule.valid())
