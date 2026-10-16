@@ -148,12 +148,6 @@ void ChecklistRenderer::drawSection(Section &section, std::size_t index) {
     ImGui::SetNextItemOpen(*mState.expandAll);
   else if (mState.autoExpand)
     ImGui::SetNextItemOpen(mEdit || (!section.finished && !sectionLocked(section)));
-  /*
-  if (section.finished)
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.80f, 0.45f, 1.0f));
-  if (section.finished)
-    ImGui::PopStyleColor();
-  */
   const bool open = ImGui::CollapsingHeader(label.c_str());
   if (!section.permissions.empty())
     ImGui::SetItemTooltip("Berechtigungen: %s", util::join(section.permissions, ", ").c_str());
