@@ -327,14 +327,14 @@ void OrdersModule::drawExportPopup(AppContext &ctx) {
 }
 
 void OrdersModule::drawWindow(AppContext &ctx) {
-  if (ctx.hasAccess(users::groups::Techsupport)) {
-    if (ImGui::Button("Bestellung anlegen")) {
-      mNewOrder = {};
-      mNewOrder.entryDate = ctx.session().date();
-      ImGui::OpenPopup("Neue Bestellung");
-    }
-    ImGui::SameLine();
+  // Everybody who sees the window (TECHSUPPORT, SALES) may create orders
+  if (ImGui::Button("Bestellung anlegen")) {
+    mNewOrder = {};
+    mNewOrder.entryDate = ctx.session().date();
+    ImGui::OpenPopup("Neue Bestellung");
   }
+  ImGui::SetItemTooltip("Neue Bestellung (PO) erfassen");
+  ImGui::SameLine();
   if (ImGui::Button("Excel Export")) {
     mExportFile.clear();
     ImGui::OpenPopup("Excel Export");
