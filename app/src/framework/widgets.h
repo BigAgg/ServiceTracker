@@ -66,6 +66,34 @@ private:
 /// Returns true when the text changed.
 bool searchField(const char *id, std::string &text, const char *hint = "suchen... (Strg+F)");
 
+/// Status per inputfield (in Module as member integrated
+struct AutocompleteState {
+  int selected = -1;
+  bool refocus = false;
+  bool popupHovered = false;
+  bool dismissed = false;
+  struct {
+    float width = 0.0f;
+    struct vec2{
+      float x = 0.0f;
+      float y = 0.0f;
+    };
+    vec2 Min = {};
+    vec2 Max = {};
+  } popupRect;
+};
+
+/// Converting UTF-8-String in relative lowercase
+/// Handles ASCII aswell as the german characters (Ä/Ö/Ü -> ä/ö/ü)
+std::string foldCase(std::string_view s);
+
+// core: matches filter - prefix-matches first then "contains", case-insensitive, max. 'limit'
+std::vector<std::string_view> matchSuggestions(std::string_view query, const std::vector<std::string> &candidates, size_t limit);
+
+/// Search input with autocomplete
+/// Returns true if the value changes
+bool autocompleteInput(const char *label, std::string &value, const std::vector<std::string> &candidates, AutocompleteState &st);
+
 /// "(?)" marker with tooltip.
 void help(const char *text);
 

@@ -6,6 +6,9 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <algorithm>
+#include <array>
+#include "widgets.h"
+#include <imgui_internal.h>
 
 namespace st::app::ui {
 
@@ -51,6 +54,152 @@ bool searchField(const char *id, std::string &text, const char *hint) {
   }
   return changed;
 }
+
+/// Removes empty/tabs at the start and end of a string
+static std::string_view trim(std::string_view s) {
+  const auto first = s.find_first_not_of(" \t");
+  if (first == std::string_view::npos) return {};
+  const auto last = s.find_last_not_of(" \t");
+  return s.substr(first, last - first + 1);
+}
+
+/// Check if position 'pos' a new word starts after space or typical spacer
+static bool isWordStart (std::string_view s, size_t pos) {
+  if (pos == 0) return true;
+  const char prev = s[pos - 1];
+  return prev == ' ' || prev == '\t' || prev == '-' || prev == '_' || prev == '/' || prev == '.' ||
+         prev == ',' || prev == '(' || prev == '&';
+}
+
+/// Rank the candidates
+static int rank (std::string_view hay, std::string_view needle) {
+  size_t pos = hay.find(needle);
+  if (pos == std::string_view::npos) return -1;
+  if (pos == 0) return 0;
+  for (; pos != std::string_view::npos; pos = hay.find (needle, pos + 1)) {
+    if (isWordStart(hay, pos)) return 1;
+  }
+  return 2;
+}
+
+std::string foldCase(std::string_view s) {
+  std::string out(s);
+  for (size_t i = 0; i < out.size (); ++i) {
+    const auto c = static_cast<unsigned char>(out[i]);
+    if (c >= 'A' && c <= 'Z') {
+      out[i] = static_cast<char>(c + ('a' - 'A'));
+    } else if (c == 0xC3 && i + 1 < out.size()) {
+      const auto n = static_cast<unsigned char>(out[i + 1]);
+      if (n == 0x84 || n == 0x96 || n == 0x9C) out[i + 1] = static_cast<char>(n + 0x20);
+      ++i;
+    }
+  }
+  return out;
+}
+
+std::vector<std::string_view> matchSuggestions(std::string_view query, const std::vector<std::string> &candidates, size_t limit) {
+  std::vector<std::string_view> result;
+  const std::string needle = foldCase(trim(query));
+  if (needle.empty() || limit == 0) return result;
+  
+  std::array<std::vector<std::string_view>, 3 > tiers;
+  for (const auto& candidate : candidates) {
+    const int r = rank(foldCase(candidate), needle);
+    if (r >= 0) tiers[r].emplace_back(candidate);
+  }
+
+  for (const auto& tier : tiers) {
+    for (auto sv : tier) {
+      if (result.size() >= limit) return result;
+      result.push_back(sv);
+    }
+  }
+  return result;
+}
+
+bool autocompleteInput(const char *label, std::string &value, const std::vector<std::string> &candidates, AutocompleteState &st) {
+  auto matches = matchSuggestions(value, candidates, 8);
+
+  struct Ctx {
+    AutocompleteState *st;
+    const decltype(matches) *m;
+  } ctx{&st, &matches};
+  auto cb = [](ImGuiInputTextCallbackData *d) -> int {
+    auto &c = *static_cast<Ctx *>(d->UserData);
+    if (d->EventFlag == ImGuiInputTextFlags_CallbackHistory && !c.m->empty ()) {
+      int n = (int)c.m->size();
+      c.st->selected = (c.st->selected + (d->EventKey == ImGuiKey_DownArrow ? 1 : n - 1 + (c.st->selected < 0))) % n;
+    }
+    else if (d->EventFlag == ImGuiInputTextFlags_CallbackCompletion && c.st->selected >= 0) {
+      auto s = (*c.m)[c.st->selected];
+      d->DeleteChars(0, d->BufTextLen);
+      d->InsertChars(0, s.data(), s.data() + s.size());
+      c.st->dismissed = true;
+    } else if (d->EventFlag == ImGuiInputTextFlags_CallbackEdit) {
+      c.st->dismissed = false;
+      c.st->selected = -1;
+    }
+    return 0;
+  };
+
+  if (st.refocus) {
+    ImGui::SetKeyboardFocusHere();
+    st.refocus = false;
+  }
+  bool changed = ImGui::InputText(label, &value,
+                                  ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackEdit,
+                                  cb, &ctx);
+  
+  if (matches.size () >= 1 && st.selected == -1) {
+    st.selected = 0;
+  }
+
+  if (ImGui::IsKeyPressed (ImGuiKey_Enter) && st.selected >= 0) {
+		value = matches[st.selected];
+		changed = true;
+		st.dismissed = true;
+		st.refocus = true;
+	}
+
+  const bool active = ImGui::IsItemActive();
+  if (active && ImGui::IsKeyPressed(ImGuiKey_Escape)) st.dismissed = true;
+
+  const bool popupHovered = st.popupRect.width > 0.0f &&
+                            ImGui::IsMouseHoveringRect(ImVec2(st.popupRect.Min.x, st.popupRect.Min.y),
+                                                       ImVec2(st.popupRect.Max.x, st.popupRect.Max.y),
+                                                       false);
+
+  const bool show = !matches.empty() && !st.dismissed && (active || popupHovered)
+    && !(matches.size() == 1 && matches[0] == value);
+  st.popupRect = {};
+  if (!show) return changed;
+
+  ImGui::SetNextWindowPos({ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y});
+  ImGui::SetNextWindowSize({ImGui::GetItemRectSize().x, 0});
+  const ImGuiWindowFlags wf = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking |
+                              ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize;
+  ImGui::PushID(label);
+  if (ImGui::Begin ("##autocomplete", nullptr, wf)) {
+    ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+    for (int i = 0; i < (int)matches.size (); ++i) {
+      std::string s{matches[i]};
+      if (ImGui::Selectable (s.c_str (), i == st.selected)) {
+        value = s;
+        changed = true;
+        st.dismissed = true;
+        st.refocus = true;
+      }
+    }
+    auto rect = ImGui::GetCurrentWindow()->Rect();
+    st.popupRect.width = rect.GetWidth();
+    st.popupRect.Max = {rect.Max.x, rect.Max.y};
+    st.popupRect.Min = {rect.Min.x, rect.Min.y};
+  }
+  ImGui::End();
+  ImGui::PopID();
+  return changed;
+} 
 
 void help(const char *text) {
   ImGui::SameLine();
