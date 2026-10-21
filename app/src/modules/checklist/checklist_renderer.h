@@ -23,9 +23,9 @@ struct ChecklistViewState {
   /// Section whose post popup should be shown.
   std::string postPopupSection;
   /// One-shot request to open/close all section headers.
-  std::optional<bool> expandAll;
+  std::optional<bool> expandAll = false;
   /// One-shot: open the sections that still need work (set when a checklist is opened).
-  bool autoExpand = true;
+  bool autoExpand = false;
   /// Section edited in the section editor popup (index).
   int editSection = -1;
   /// Only show tasks that are not done yet.
