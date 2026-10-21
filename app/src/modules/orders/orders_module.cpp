@@ -144,23 +144,35 @@ void OrdersModule::drawOrder(AppContext &ctx, Order &order, bool isNew) {
   }
   if (isNew) {
     ImGui::SetNextItemWidth(200.0f);
-    ImGui::InputText("Kunde", &order.customer);
+
+    //ImGui::InputText("Kunde", &order.customer);
+    static st::app::ui::AutocompleteState acs;
+    if (st::app::ui::autocompleteInput ("Kunde", order.customer, ctx.settings ().knownCustomers, acs)) {
+      
+    }
+
     ImGui::SameLine();
+
     ImGui::SetNextItemWidth(200.0f);
     if (ImGui::BeginCombo("##customers", "Bekannte Kunden...")) {
+
       std::vector<std::string> customers = ctx.settings().knownCustomers;
+
       for (const auto &c : mStore.customers())
         if (std::find(customers.begin(), customers.end(), c) == customers.end())
           customers.push_back(c);
-      for (const auto &c : customers)
-        if (ImGui::Selectable(c.c_str(), c == order.customer))
+
+      for (const auto &c : customers) {
+        if (ImGui::Selectable(c.c_str(), c == order.customer)) {
           order.customer = c;
+        }
+      }
+
       ImGui::EndCombo();
     }
   } else {
     ImGui::Text("Kunde: %s", order.customer.c_str());
   }
-
   ImGui::SetNextItemWidth(200.0f);
   ImGui::InputText("Bestellnummer", &order.orderNumber);
   update |= ImGui::IsItemDeactivatedAfterEdit();
