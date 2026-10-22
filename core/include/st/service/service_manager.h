@@ -37,6 +37,9 @@ struct ServiceEnvironment {
   util::fs::path externLocalDir;
   RecordStore syncStore;
   RecordStore externStore;
+  /// External services with a local copy on this PC (externLocalDir/extern_local.json).
+  /// Used when the network drive is not reachable (working at a customer).
+  RecordStore localExternStore;
   HistoryStore history;
   /// History of external services (History_extern.json).
   HistoryStore externHistory;
@@ -67,12 +70,17 @@ public:
   /// "Service_YYYY.MM.DD" -> "YYYY.MM.DD"
   static std::string serviceDate(std::string_view folderName);
 
-  /// Service folders of a device, sorted (oldest first).
+  /// True if the shared lists (Sync.json) are reachable. Offline the records of external
+  /// services come from the local list and the services from the local copy.
+  bool online() const;
+
+  /// Service folders of a device, sorted (oldest first). Offline: from the local copy.
   std::vector<std::string> listServices(const devices::Device &device) const;
   util::fs::path syncFolderFor(const devices::Device &device, std::string_view service) const;
   util::fs::path externCopyFor(const devices::Device &device) const;
 
   /// Record of the device from Sync.json, or a fresh record (not in the list).
+  /// Offline: from the local list of external services.
   util::Result<ServiceRecord> recordFor(const devices::Device &device) const;
 
   /// Checklist file of a service: local external copy, service folder, sync folder (in that order).
@@ -105,6 +113,8 @@ public:
   /// last time, copies the local device folder over the original, deletes the local
   /// copy and sets "extern abgeschlossen". Requires access to the device folder.
   util::Result<ServiceRecord> finishExternService(const devices::Device &device);
+  /// Records of the external services with a local copy on this PC (offline view).
+  util::Result<std::vector<ServiceRecord>> localExternRecords() const;
   /// Removes an external service from both lists. The local copy is kept.
   util::Status cancelExternService(const devices::Device &device);
 
@@ -112,6 +122,8 @@ public:
   double priceOf(const checklist::Checklist &checklist) const;
 
 private:
+  /// Keeps the local list in sync: external work states are stored, others removed.
+  void updateLocalExtern(const ServiceRecord &record) const;
   util::Status createServiceFolders(const devices::Device &device, const util::fs::path &serviceFolder) const;
   util::Status copyTemplates(const devices::Device &device, const std::string &date, const util::fs::path &target, bool external) const;
   util::Result<FinishResult> finalize(const devices::Device &device, ServiceRecord record, const util::fs::path &workFolder,

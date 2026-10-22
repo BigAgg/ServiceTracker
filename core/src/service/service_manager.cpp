@@ -35,9 +35,12 @@ std::string ServiceManager::serviceFolderName(std::string_view date) { return "S
 
 std::string ServiceManager::serviceDate(std::string_view folderName) { return util::splitAt(folderName, "_").second; }
 
+bool ServiceManager::online() const { return util::isDirectory(mEnv.syncStore.file().parent_path()); }
+
 std::vector<std::string> ServiceManager::listServices(const devices::Device &device) const {
   std::vector<std::string> out;
-  for (const auto &dir : util::listDirectory(device.path, true, false)) {
+  const fs::path folder = !util::isDirectory(device.path) && util::isDirectory(externCopyFor(device)) ? externCopyFor(device) : device.path;
+  for (const auto &dir : util::listDirectory(folder, true, false)) {
     std::string name = u8(dir.filename());
     if (name.starts_with("Service_"))
       out.push_back(std::move(name));
@@ -54,7 +57,7 @@ fs::path ServiceManager::externCopyFor(const devices::Device &device) const {
 }
 
 util::Result<ServiceRecord> ServiceManager::recordFor(const devices::Device &device) const {
-  auto found = mEnv.syncStore.find(device.name);
+  auto found = online() ? mEnv.syncStore.find(device.name) : mEnv.localExternStore.find(device.name);
   if (!found)
     return std::unexpected(found.error());
   ServiceRecord record = found->value_or(ServiceRecord{});
@@ -97,6 +100,23 @@ std::optional<fs::path> ServiceManager::mirrorOf(const devices::Device &device, 
   if (rel.empty() || rel.native().starts_with(fs::path("..").native()))
     return std::nullopt;
   return device.path / rel;
+}
+
+void ServiceManager::updateLocalExtern(const ServiceRecord &record) const {
+  if (mEnv.localExternStore.file().empty())
+    return;
+  const auto s = isExternalWorkStatus(record.status) ? mEnv.localExternStore.upsert(record) : mEnv.localExternStore.remove(record.name);
+  if (!s)
+    log::warning("Lokale Liste externer Services: {}", s.error().message);
+}
+
+util::Result<std::vector<ServiceRecord>> ServiceManager::localExternRecords() const {
+  auto records = mEnv.localExternStore.loadAll();
+  if (!records)
+    return records;
+  // only entries whose local copy still exists
+  std::erase_if(*records, [&](const ServiceRecord &r) { return !util::isDirectory(mEnv.externLocalDir / util::pathFromUtf8(r.name)); });
+  return records;
 }
 
 util::Status ServiceManager::createServiceFolders(const devices::Device &device, const fs::path &serviceFolder) const {
@@ -175,6 +195,7 @@ util::Result<ServiceRecord> ServiceManager::setStatus(const devices::Device &dev
     if (auto s = mEnv.externStore.upsert(*record); !s)
       return std::unexpected(s.error());
   }
+  updateLocalExtern(*record);
   log::info("{}: Status \"{}\"", device.name, newStatus);
   return record;
 }
@@ -204,6 +225,8 @@ util::Result<ServiceRecord> ServiceManager::setAdditionalInfo(const devices::Dev
   if (isExternalWorkStatus(record->status) || record->status == status::ExternFinished)
     if (auto s = mEnv.externStore.upsert(*record); !s)
       return std::unexpected(s.error());
+  if (isExternalWorkStatus(record->status))
+    updateLocalExtern(*record);
   return record;
 }
 
@@ -318,6 +341,7 @@ util::Result<ServiceRecord> ServiceManager::createExternService(const devices::D
     return std::unexpected(s.error());
   if (auto s = mEnv.externStore.upsert(*record); !s)
     return std::unexpected(s.error());
+  updateLocalExtern(*record);
   log::info("Externer Service geplant: {} am {}", device.name, date);
   return record;
 }
@@ -363,6 +387,7 @@ util::Result<ServiceRecord> ServiceManager::finishExternService(const devices::D
     return std::unexpected(s.error());
   if (auto s = mEnv.externStore.upsert(*record); !s)
     return std::unexpected(s.error());
+  updateLocalExtern(*record);
   if (auto s = util::removeAll(localCopy); !s)
     log::warning("Lokale Kopie konnte nicht gelöscht werden: {}", s.error().message);
   log::info("Externer Service zurückgeführt: {} {}", device.name, record->activeService);
@@ -372,6 +397,9 @@ util::Result<ServiceRecord> ServiceManager::finishExternService(const devices::D
 util::Status ServiceManager::cancelExternService(const devices::Device &device) {
   if (auto s = mEnv.externStore.remove(device.name); !s)
     return s;
+  ServiceRecord cancelled;
+  cancelled.name = device.name;
+  updateLocalExtern(cancelled);
   return removeFromList(device);
 }
 

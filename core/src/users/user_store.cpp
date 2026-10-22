@@ -1,5 +1,7 @@
 #include "st/users/user_store.h"
 
+#include "st/util/log.h"
+
 #include "st/util/strings.h"
 
 #include <algorithm>
@@ -82,6 +84,31 @@ util::Status UserStore::load() {
   }
   ensureBootstrapAdmin();
   return {};
+}
+
+UserStore::Source UserStore::loadWithCache(const util::fs::path &cacheFile, std::string_view user) {
+  if (util::isDirectory(mFile.parent_path())) {
+    if (auto s = load(); s) {
+      if (const User *own = find(user)) {
+        const std::string bytes = encodeUserTable({*own});
+        if (auto cached = util::readFile(cacheFile); !cached || *cached != bytes)
+          if (auto w = util::writeFileAtomic(cacheFile, bytes); !w)
+            log::warning("Berechtigungen konnten nicht lokal gespeichert werden: {}", w.error().message);
+      }
+      return Source::Server;
+    } else {
+      log::warning("Benutzerdatei nicht lesbar: {}", s.error().message);
+    }
+  }
+  mUsers.clear();
+  if (auto cached = util::readFile(cacheFile)) {
+    mUsers = decodeUserTable(*cached);
+    ensureBootstrapAdmin();
+    log::info("Offline: Berechtigungen aus dem lokalen Stand ({})", util::pathToUtf8(cacheFile));
+    return Source::Cache;
+  }
+  ensureBootstrapAdmin();
+  return Source::None;
 }
 
 util::Status UserStore::save() const {

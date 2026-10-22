@@ -16,13 +16,16 @@ namespace st::app {
 
 bool ExternModule::available(const AppContext &ctx) const {
   const auto file = util::pathFromUtf8(ctx.paths().externFile);
-  return ctx.hasAccess(users::groups::Techsupport) && util::isDirectory(file.parent_path());
+  // Offline (at a customer) the window works with the local copies
+  return ctx.hasAccess(users::groups::Techsupport) &&
+         (util::isDirectory(file.parent_path()) || util::isDirectory(ctx.services().environment().externLocalDir));
 }
 
 void ExternModule::init(AppContext &ctx) {
   mInfo = kExternTemplate;
   mPoll.setInterval(std::chrono::milliseconds(std::max(1000, ctx.settings().refreshIntervalMs * 2)));
-  ctx.notify.check(ctx.services().environment().externStore.ensureExists(), "extern.json");
+  if (ctx.syncAvailable())
+    ctx.notify.check(ctx.services().environment().externStore.ensureExists(), "extern.json");
   ctx.ui.addWindow("Externe Services", [this, &ctx] { drawWindow(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
   ctx.events.subscribe<events::RecordsChanged>([this, &ctx](const auto &) { reload(ctx); });
   reload(ctx);
@@ -36,7 +39,7 @@ void ExternModule::update(AppContext &ctx) {
 void ExternModule::reload(AppContext &ctx) {
   const auto &store = ctx.services().environment().externStore;
   mListTime = store.lastWriteTime();
-  auto list = store.loadAll();
+  auto list = ctx.syncAvailable() ? store.loadAll() : ctx.services().localExternRecords();
   if (list)
     mList = std::move(*list);
 }
@@ -117,32 +120,41 @@ void ExternModule::drawWindow(AppContext &ctx) {
   const auto &record = ctx.activeRecord();
   namespace s = service::status;
   const bool externalActive = device && service::isExternalWorkStatus(record.status);
+  const bool online = ctx.syncAvailable();
   {
-    ui::Disabled d(!externalActive || !ctx.deviceRegistry.hasAccess());
+    ui::Disabled d(!externalActive || !online || !ctx.deviceRegistry.hasAccess());
     if (ImGui::Button("Extern abschließen"))
       ImGui::OpenPopup("Extern abschließen");
     ImGui::SetItemTooltip("Wieder im Haus: lokale Arbeit in den Geräteordner übernehmen.\n"
                           "Danach in \"Service Control\" \"Service fertigmelden\".");
-    ImGui::SameLine();
+  }
+  ImGui::SameLine();
+  {
+    ui::Disabled d(!externalActive || !online);
     if (ImGui::Button("Als \"extern\" markieren") && device) {
       if (auto r = ctx.services().setStatus(*device, s::External); ctx.notify.check(r))
         ctx.applyRecord(*r);
     }
     ImGui::SetItemTooltip("Techniker ist beim Kunden");
-    ImGui::SameLine();
+  }
+  ImGui::SameLine();
+  {
+    ui::Disabled d(!device || !util::isDirectory(device ? ctx.services().externCopyFor(*device) : util::fs::path()));
     if (ImGui::Button("Lokalen Ordner öffnen") && device)
       platform::openPath(ctx.services().externCopyFor(*device));
-    ImGui::SameLine();
-    if (ui::confirmButton("Aus Liste entfernen", "Externen Service wirklich entfernen?\nDie lokale Kopie bleibt erhalten.", !externalActive) && device) {
-      if (ctx.notify.check(ctx.services().cancelExternService(*device), "Entfernen")) {
-        auto updated = record;
-        updated.status.clear();
-        ctx.applyRecord(updated);
-        reload(ctx);
-      }
+  }
+  ImGui::SameLine();
+  if (ui::confirmButton("Aus Liste entfernen", "Externen Service wirklich entfernen?\nDie lokale Kopie bleibt erhalten.", !externalActive || !online) && device) {
+    if (ctx.notify.check(ctx.services().cancelExternService(*device), "Entfernen")) {
+      auto updated = record;
+      updated.status.clear();
+      ctx.applyRecord(updated);
+      reload(ctx);
     }
   }
-  if (device && record.status == s::ExternFinished)
+  if (!ctx.syncAvailable())
+    ui::hintText("Offline – es wird in der lokalen Kopie gearbeitet. \"Extern abschließen\" ist erst im Haus möglich.");
+  else if (device && record.status == s::ExternFinished)
     ui::hintText("Extern abgeschlossen – in \"Service Control\" \"Service fertigmelden\" wählen.");
   else if (!externalActive && device)
     ui::hintText("Gewähltes Gerät hat keinen laufenden externen Service.");

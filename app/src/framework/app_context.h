@@ -95,6 +95,8 @@ public:
   checklist::ExpressionRegistry expressions;
   checklist::SectionActionRegistry sectionActions;
   service::ServiceManager &services() { return *mServices; }
+  const service::ServiceManager &services() const { return *mServices; }
+  /// False when the network drive was not reachable at start (offline mode).
   bool syncAvailable() const { return mSyncAvailable; }
 
   // --- selection --------------------------------------------------------------
@@ -131,6 +133,8 @@ private:
   service::StatusIndex mStatusIndex;
   std::int64_t mSyncWriteTime = 0;
   PollTimer mSyncPoll;
+  PollTimer mOnlineCheck{std::chrono::seconds(10)};
+  bool mReconnectNotified = false;
 
   std::string mActiveDevice;
   service::ServiceRecord mActiveRecord;

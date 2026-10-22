@@ -40,6 +40,7 @@ struct Fixture {
     env.externLocalDir = dir / "local/extern";
     env.syncStore = RecordStore(dir / "sync/Sync.json");
     env.externStore = RecordStore(dir / "sync/extern.json");
+    env.localExternStore = RecordStore(dir / "local/extern/extern_local.json");
     env.history = HistoryStore(dir / "sync/History.json");
     env.externHistory = HistoryStore(dir / "sync/History_extern.json");
     env.configs = &configs;
@@ -266,6 +267,46 @@ TEST_CASE("external service: device folder not reachable") {
   util::fs::rename(f.device.path, f.dir / "offline");
   CHECK_FALSE(f.manager->finishExternService(f.device).has_value());
   CHECK(util::pathExists(f.manager->externCopyFor(f.device))); // nothing is lost
+}
+
+TEST_CASE("external service: working offline at the customer") {
+  Fixture f;
+  auto &m = *f.manager;
+  auto planned = m.createExternService(f.device, "2026.04.01", "Kunde: Extern", f.ts.session);
+  REQUIRE(planned.has_value());
+  CHECK(m.online());
+  REQUIRE(m.localExternRecords().has_value());
+  CHECK(m.localExternRecords()->size() == 1);
+  auto marked = m.setStatus(f.device, "extern");
+  REQUIRE(marked.has_value());
+  CHECK((*m.environment().localExternStore.find("0601-1234"))->status == "extern");
+
+  // network drive gone: sync folder and device folder not reachable
+  util::fs::rename(f.dir / "sync", f.dir / "sync_offline");
+  util::fs::rename(f.device.path, f.dir / "device_offline");
+  CHECK_FALSE(m.online());
+  auto record = m.recordFor(f.device);
+  REQUIRE(record.has_value());
+  CHECK(record->status == "extern");
+  CHECK(record->activeService == "Service_2026.04.01");
+  CHECK(record->services == std::vector<std::string>{"Service_2026.04.01"}); // from the local copy
+  auto checklist = m.findChecklist(f.device, record->activeService, *record);
+  REQUIRE(checklist.has_value());
+  CHECK(checklist->parent_path() == m.externCopyFor(f.device) / "Service_2026.04.01");
+  CHECK_FALSE(m.finishExternService(f.device).has_value()); // only in house
+
+  // back in house
+  util::fs::rename(f.dir / "sync_offline", f.dir / "sync");
+  util::fs::rename(f.dir / "device_offline", f.device.path);
+  REQUIRE(m.finishExternService(f.device).has_value());
+  CHECK(m.localExternRecords()->empty()); // removed from the local list
+}
+
+TEST_CASE("external service: cancelling removes it from the local list") {
+  Fixture f;
+  REQUIRE(f.manager->createExternService(f.device, "2026.04.01", "", f.ts.session).has_value());
+  REQUIRE(f.manager->cancelExternService(f.device));
+  CHECK_FALSE((*f.manager->environment().localExternStore.find("0601-1234")).has_value());
 }
 
 TEST_CASE("external service uses the extern templates") {

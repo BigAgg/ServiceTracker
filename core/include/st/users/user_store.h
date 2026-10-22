@@ -43,6 +43,17 @@ public:
 
   /// Reads the table from disk. A missing file results in an empty table.
   util::Status load();
+
+  /// Where the permissions came from (see loadWithCache).
+  enum class Source { Server,
+                      Cache,
+                      None };
+
+  /// Reads the table from the server. If the server is reachable, the entry of `user`
+  /// is written to `cacheFile` (local, same binary format). If the server is not
+  /// reachable (folder missing, file unreadable), the cached entry is used so the
+  /// user keeps his permissions offline (e.g. at a customer).
+  Source loadWithCache(const util::fs::path &cacheFile, std::string_view user);
   /// Writes the table to disk.
   util::Status save() const;
 

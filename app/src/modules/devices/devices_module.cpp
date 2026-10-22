@@ -58,6 +58,9 @@ void DevicesModule::init(AppContext &ctx) {
   ctx.events.subscribe<events::DeviceSelected>([this, &ctx](const auto &) {
     const auto *device = ctx.activeDevice();
     mBrowseRoot = device ? device->path : util::fs::path();
+    // Offline (external service at a customer): browse the local copy
+    if (device && !util::isDirectory(device->path) && util::isDirectory(ctx.services().externCopyFor(*device)))
+      mBrowseRoot = ctx.services().externCopyFor(*device);
     mBrowsePath = mBrowseRoot;
     mEntries.clear();
     if (!mBrowsePath.empty())

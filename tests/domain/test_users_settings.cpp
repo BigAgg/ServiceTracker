@@ -75,6 +75,31 @@ TEST_CASE("user store: missing file means empty table") {
   CHECK(store.names() == std::vector<std::string>{"admin"});
 }
 
+TEST_CASE("user store: own permissions are cached for offline work") {
+  test::TempDir dir;
+  const auto server = dir / "server/users.bin";
+  const auto cache = dir / "local/users_cache.bin";
+  test::writeText(server, encodeUserTable({{"mmueller", {"TECHSUPPORT"}, false}, {"other", {"SALES"}, true}}));
+
+  UserStore online(server, "admin");
+  CHECK(online.loadWithCache(cache, "MMueller") == UserStore::Source::Server);
+  CHECK(online.hasAccess("mmueller", "TECHSUPPORT"));
+  REQUIRE(st::util::pathExists(cache));
+  CHECK(decodeUserTable(test::readText(cache)).size() == 1); // only the own entry
+
+  // offline: server folder not reachable
+  std::filesystem::remove_all(dir / "server");
+  UserStore offline(server, "admin");
+  CHECK(offline.loadWithCache(cache, "mmueller") == UserStore::Source::Cache);
+  CHECK(offline.hasAccess("mmueller", "TECHSUPPORT"));
+  CHECK_FALSE(offline.hasAccess("other", "SALES"));
+  CHECK(offline.isPoweruser("admin")); // bootstrap admin stays
+
+  UserStore nothing(server, "admin");
+  CHECK(nothing.loadWithCache(dir / "local/missing.bin", "mmueller") == UserStore::Source::None);
+  CHECK_FALSE(nothing.hasAccess("mmueller", "TECHSUPPORT"));
+}
+
 TEST_CASE("settings: defaults, partial files and round trip") {
   test::TempDir dir;
   auto defaults = config::loadSettings(dir / "missing.json");

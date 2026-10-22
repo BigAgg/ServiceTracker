@@ -26,6 +26,7 @@ AppContext::AppContext(config::Settings settings, std::string user, util::fs::pa
   service::ServiceEnvironment env;
   env.syncTempDir = p.syncTempDir();
   env.externLocalDir = resolve(mWorkingDir, p.externLocalDir);
+  env.localExternStore = service::RecordStore(env.externLocalDir / "extern_local.json");
   env.syncStore = service::RecordStore(p.syncFile());
   env.externStore = service::RecordStore(util::pathFromUtf8(p.externFile));
   env.history = service::HistoryStore(p.historyFile());
@@ -38,8 +39,16 @@ void AppContext::initialize() {
   const auto &p = mSettings.paths;
   log::info("Benutzer: {}", user());
 
-  if (auto s = userStore.load(); !s)
-    notify.error("Benutzerdatei nicht lesbar – eingeschränkte Rechte. " + s.error().message);
+  switch (userStore.loadWithCache(mWorkingDir / "users_cache.bin", user())) {
+  case users::UserStore::Source::Server:
+    break;
+  case users::UserStore::Source::Cache:
+    notify.warning("Offline: Berechtigungen aus dem zuletzt gespeicherten Stand");
+    break;
+  case users::UserStore::Source::None:
+    notify.error("Benutzerdatei nicht erreichbar und kein lokaler Stand – eingeschränkte Rechte.");
+    break;
+  }
 
   if (util::pathExists(p.configsFile())) {
     notify.check(configStore.load(), "Gerätekonfigurationen");
@@ -55,7 +64,8 @@ void AppContext::initialize() {
     notify.check(services().environment().history.ensureExists(), "History.json");
     notify.check(services().environment().externHistory.ensureExists(), "History_extern.json");
   } else {
-    notify.warning("Sync-Ordner nicht erreichbar: " + p.syncDir);
+    notify.warning("Offline: Netzlaufwerk nicht erreichbar – nur externe Services mit lokaler Kopie verfügbar");
+    log::warning("Sync-Ordner nicht erreichbar: {}", p.syncDir);
   }
 
   mPrefs = config::loadPreferences(mWorkingDir / "preferences.json", mWorkingDir / "checklist.bin");
@@ -67,7 +77,15 @@ void AppContext::initialize() {
 
 void AppContext::update() {
   alerts.update(*this);
-  if (!mSyncAvailable || !mSyncPoll.due())
+  if (!mSyncAvailable) {
+    notify.setStatusLine(user() + "  |  Offline");
+    if (!mReconnectNotified && mOnlineCheck.due() && services().online()) {
+      mReconnectNotified = true;
+      notify.info("Netzlaufwerk wieder erreichbar – ServiceTracker neu starten, um alle Funktionen zu nutzen.");
+    }
+    return;
+  }
+  if (!mSyncPoll.due())
     return;
   const auto writeTime = services().environment().syncStore.lastWriteTime();
   if (writeTime != mSyncWriteTime)
@@ -90,11 +108,11 @@ std::string AppContext::displayTime(std::string_view timestamp) const {
 }
 
 void AppContext::reloadRecords() {
-  if (!mSyncAvailable)
-    return;
   auto &store = services().environment().syncStore;
-  mSyncWriteTime = store.lastWriteTime();
-  auto records = store.loadAll();
+  if (mSyncAvailable)
+    mSyncWriteTime = store.lastWriteTime();
+  // Offline: the external services with a local copy on this PC
+  auto records = mSyncAvailable ? store.loadAll() : services().localExternRecords();
   if (!records) {
     notify.error(records.error().message);
     return;
