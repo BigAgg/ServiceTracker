@@ -1,29 +1,28 @@
 #include "st/util/suggestions.h"
 
 #include <array>
-#include <vector>
-#include <string>
-#include <string_view>
 
-namespace st::text {
-/// Removes empty/tabs at the start and end of a string
-static std::string_view trim(std::string_view s) {
+namespace st::util {
+namespace {
+
+/// Removes spaces/tabs at the start and end of a string.
+std::string_view trimBlanks(std::string_view s) {
   const auto first = s.find_first_not_of(" \t");
   if (first == std::string_view::npos) return {};
   const auto last = s.find_last_not_of(" \t");
   return s.substr(first, last - first + 1);
 }
 
-/// Check if position 'pos' a new word starts after space or typical spacer
-static bool isWordStart(std::string_view s, size_t pos) {
+/// True if a word starts at `pos` (start of text or after a separator).
+bool isWordStart(std::string_view s, size_t pos) {
   if (pos == 0) return true;
   const char prev = s[pos - 1];
   return prev == ' ' || prev == '\t' || prev == '-' || prev == '_' || prev == '/' || prev == '.' ||
          prev == ',' || prev == '(' || prev == '&';
 }
 
-/// Rank the candidates
-static int rank(std::string_view hay, std::string_view needle) {
+/// 0 = prefix, 1 = word start, 2 = anywhere, -1 = no match.
+int rank(std::string_view hay, std::string_view needle) {
   size_t pos = hay.find(needle);
   if (pos == std::string_view::npos) return -1;
   if (pos == 0) return 0;
@@ -32,6 +31,8 @@ static int rank(std::string_view hay, std::string_view needle) {
   }
   return 2;
 }
+
+} // namespace
 
 std::string foldCase(std::string_view s) {
   std::string out(s);
@@ -48,9 +49,9 @@ std::string foldCase(std::string_view s) {
   return out;
 }
 
-std::vector<std::string_view> matchSuggestions(std::string_view query, const std::vector<std::string> &candidates, size_t limit) {
+std::vector<std::string_view> matchSuggestions(std::string_view query, const std::vector<std::string> &candidates, std::size_t limit) {
   std::vector<std::string_view> result;
-  const std::string needle = foldCase(trim(query));
+  const std::string needle = foldCase(trimBlanks(query));
   if (needle.empty() || limit == 0) return result;
 
   std::array<std::vector<std::string_view>, 3> tiers;
@@ -67,4 +68,4 @@ std::vector<std::string_view> matchSuggestions(std::string_view query, const std
   }
   return result;
 }
-} // namespace st::text
+} // namespace st::util

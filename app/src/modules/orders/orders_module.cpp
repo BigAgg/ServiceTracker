@@ -129,6 +129,14 @@ void OrdersModule::save(AppContext &ctx, Order order) {
   }
 }
 
+std::vector<std::string> OrdersModule::knownCustomers(const AppContext &ctx) const {
+  std::vector<std::string> customers = ctx.settings().knownCustomers;
+  for (const auto &c : mStore.customers())
+    if (std::find(customers.begin(), customers.end(), c) == customers.end())
+      customers.push_back(c);
+  return customers;
+}
+
 void OrdersModule::drawOrder(AppContext &ctx, Order &order, bool isNew) {
   const bool cancelled = !order.cancelledDate.empty();
   const std::string today = ctx.session().date();
@@ -143,36 +151,21 @@ void OrdersModule::drawOrder(AppContext &ctx, Order &order, bool isNew) {
     ImGui::PopStyleColor();
   }
   if (isNew) {
+    const auto customers = knownCustomers(ctx);
     ImGui::SetNextItemWidth(200.0f);
-
-    //ImGui::InputText("Kunde", &order.customer);
-    static st::app::ui::AutocompleteState acs;
-    if (st::app::ui::autocompleteInput ("Kunde", order.customer, ctx.settings ().knownCustomers, acs)) {
-      
-    }
-
+    ui::autocompleteInput("Kunde", order.customer, customers, mCustomerInput);
     ImGui::SameLine();
-
     ImGui::SetNextItemWidth(200.0f);
     if (ImGui::BeginCombo("##customers", "Bekannte Kunden...")) {
-
-      std::vector<std::string> customers = ctx.settings().knownCustomers;
-
-      for (const auto &c : mStore.customers())
-        if (std::find(customers.begin(), customers.end(), c) == customers.end())
-          customers.push_back(c);
-
-      for (const auto &c : customers) {
-        if (ImGui::Selectable(c.c_str(), c == order.customer)) {
+      for (const auto &c : customers)
+        if (ImGui::Selectable(c.c_str(), c == order.customer))
           order.customer = c;
-        }
-      }
-
       ImGui::EndCombo();
     }
   } else {
     ImGui::Text("Kunde: %s", order.customer.c_str());
   }
+
   ImGui::SetNextItemWidth(200.0f);
   ImGui::InputText("Bestellnummer", &order.orderNumber);
   update |= ImGui::IsItemDeactivatedAfterEdit();
@@ -342,6 +335,7 @@ void OrdersModule::drawWindow(AppContext &ctx) {
   // Everybody who sees the window (TECHSUPPORT, SALES) may create orders
   if (ImGui::Button("Bestellung anlegen")) {
     mNewOrder = {};
+    mCustomerInput = {};
     mNewOrder.entryDate = ctx.session().date();
     ImGui::OpenPopup("Neue Bestellung");
   }

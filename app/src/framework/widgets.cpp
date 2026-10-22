@@ -6,10 +6,9 @@
 
 #include <misc/cpp/imgui_stdlib.h>
 
-#include <algorithm>
-#include <array>
-#include "widgets.h"
 #include <imgui_internal.h>
+
+#include <algorithm>
 
 namespace st::app::ui {
 
@@ -57,26 +56,27 @@ bool searchField(const char *id, std::string &text, const char *hint) {
 }
 
 bool autocompleteInput(const char *label, std::string &value, const std::vector<std::string> &candidates, AutocompleteState &st) {
-  auto matches = st::text::matchSuggestions(value, candidates, 8);
+  const auto matches = util::matchSuggestions(value, candidates, 8);
 
-  struct Ctx {
-    AutocompleteState *st;
-    const decltype(matches) *m;
-  } ctx{&st, &matches};
-  auto cb = [](ImGuiInputTextCallbackData *d) -> int {
-    auto &c = *static_cast<Ctx *>(d->UserData);
-    if (d->EventFlag == ImGuiInputTextFlags_CallbackHistory && !c.m->empty ()) {
-      int n = (int)c.m->size();
-      c.st->selected = (c.st->selected + (d->EventKey == ImGuiKey_DownArrow ? 1 : n - 1 + (c.st->selected < 0))) % n;
-    }
-    else if (d->EventFlag == ImGuiInputTextFlags_CallbackCompletion && c.st->selected >= 0) {
-      auto s = (*c.m)[c.st->selected];
+  struct CallbackData {
+    AutocompleteState *state;
+    const std::vector<std::string_view> *matches;
+  } data{&st, &matches};
+  const auto callback = [](ImGuiInputTextCallbackData *d) -> int {
+    auto &c = *static_cast<CallbackData *>(d->UserData);
+    if (d->EventFlag == ImGuiInputTextFlags_CallbackHistory && !c.matches->empty()) {
+      const int n = static_cast<int>(c.matches->size());
+      const int step = d->EventKey == ImGuiKey_DownArrow ? 1 : n - 1;
+      c.state->selected = c.state->selected < 0 ? 0 : (c.state->selected + step) % n;
+    } else if (d->EventFlag == ImGuiInputTextFlags_CallbackCompletion && c.state->selected >= 0 &&
+               c.state->selected < static_cast<int>(c.matches->size())) {
+      const auto s = (*c.matches)[static_cast<std::size_t>(c.state->selected)];
       d->DeleteChars(0, d->BufTextLen);
       d->InsertChars(0, s.data(), s.data() + s.size());
-      c.st->dismissed = true;
+      c.state->dismissed = true;
     } else if (d->EventFlag == ImGuiInputTextFlags_CallbackEdit) {
-      c.st->dismissed = false;
-      c.st->selected = -1;
+      c.state->dismissed = false;
+      c.state->selected = -1;
     }
     return 0;
   };
@@ -87,58 +87,54 @@ bool autocompleteInput(const char *label, std::string &value, const std::vector<
   }
   bool changed = ImGui::InputText(label, &value,
                                   ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackEdit,
-                                  cb, &ctx);
-  
-  if (matches.size () >= 1 && st.selected == -1) {
-    st.selected = 0;
-  }
-
-  if (ImGui::IsKeyPressed (ImGuiKey_Enter) && st.selected >= 0) {
-		value = matches[st.selected];
-		changed = true;
-		st.dismissed = true;
-		st.refocus = true;
-	}
-
+                                  callback, &data);
   const bool active = ImGui::IsItemActive();
-  if (active && ImGui::IsKeyPressed(ImGuiKey_Escape)) st.dismissed = true;
+  if (!matches.empty() && st.selected < 0)
+    st.selected = 0;
+  if (st.selected >= static_cast<int>(matches.size()))
+    st.selected = matches.empty() ? -1 : 0;
 
-  const bool popupHovered = st.popupRect.width > 0.0f &&
-                            ImGui::IsMouseHoveringRect(ImVec2(st.popupRect.Min.x, st.popupRect.Min.y),
-                                                       ImVec2(st.popupRect.Max.x, st.popupRect.Max.y),
-                                                       false);
+  const bool listOpen = !st.dismissed && !matches.empty();
+  if (listOpen && ImGui::IsItemDeactivated() && ImGui::IsKeyPressed(ImGuiKey_Enter) && st.selected >= 0) {
+    value = std::string(matches[static_cast<std::size_t>(st.selected)]);
+    changed = true;
+    st.dismissed = true;
+    st.refocus = true;
+  }
+  if (active && ImGui::IsKeyPressed(ImGuiKey_Escape))
+    st.dismissed = true;
 
-  const bool show = !matches.empty() && !st.dismissed && (active || popupHovered)
-    && !(matches.size() == 1 && matches[0] == value);
-  st.popupRect = {};
-  if (!show) return changed;
+  const bool popupHovered = st.popupMax.x > st.popupMin.x && ImGui::IsMouseHoveringRect(st.popupMin, st.popupMax, false);
+  const bool show = listOpen && (active || popupHovered) && !(matches.size() == 1 && matches[0] == value);
+  st.popupMin = st.popupMax = ImVec2();
+  if (!show)
+    return changed;
 
-  ImGui::SetNextWindowPos({ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y});
-  ImGui::SetNextWindowSize({ImGui::GetItemRectSize().x, 0});
-  const ImGuiWindowFlags wf = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
-                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking |
-                              ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize;
-  ImGui::PushID(label);
-  if (ImGui::Begin ("##autocomplete", nullptr, wf)) {
+  ImGui::SetNextWindowPos(ImVec2(ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y));
+  ImGui::SetNextWindowSize(ImVec2(ImGui::GetItemRectSize().x, 0.0f));
+  constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking |
+                                      ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize;
+  // Window names are global: derive a unique one from the input's ID
+  const std::string window = "##autocomplete" + std::to_string(ImGui::GetItemID());
+  if (ImGui::Begin(window.c_str(), nullptr, kFlags)) {
     ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-    for (int i = 0; i < (int)matches.size (); ++i) {
-      std::string s{matches[i]};
-      if (ImGui::Selectable (s.c_str (), i == st.selected)) {
-        value = s;
+    for (std::size_t i = 0; i < matches.size(); ++i) {
+      const std::string suggestion(matches[i]);
+      if (ImGui::Selectable(suggestion.c_str(), static_cast<int>(i) == st.selected)) {
+        value = suggestion;
         changed = true;
         st.dismissed = true;
         st.refocus = true;
       }
     }
-    auto rect = ImGui::GetCurrentWindow()->Rect();
-    st.popupRect.width = rect.GetWidth();
-    st.popupRect.Max = {rect.Max.x, rect.Max.y};
-    st.popupRect.Min = {rect.Min.x, rect.Min.y};
+    const ImRect rect = ImGui::GetCurrentWindow()->Rect();
+    st.popupMin = rect.Min;
+    st.popupMax = rect.Max;
   }
   ImGui::End();
-  ImGui::PopID();
   return changed;
-} 
+}
 
 void help(const char *text) {
   ImGui::SameLine();

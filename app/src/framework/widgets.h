@@ -66,25 +66,22 @@ private:
 /// Returns true when the text changed.
 bool searchField(const char *id, std::string &text, const char *hint = "suchen... (Strg+F)");
 
-/// Status per inputfield (in Module as member integrated
+/// State of one autocompletion input; keep it as a member of the module (one per field).
 struct AutocompleteState {
+  /// Highlighted suggestion (-1 = none).
   int selected = -1;
+  /// Give the input the keyboard focus in the next frame (after choosing a suggestion).
   bool refocus = false;
-  bool popupHovered = false;
+  /// Suggestion list closed (Esc or a suggestion was taken) until the next edit.
   bool dismissed = false;
-  struct {
-    float width = 0.0f;
-    struct vec2{
-      float x = 0.0f;
-      float y = 0.0f;
-    };
-    vec2 Min = {};
-    vec2 Max = {};
-  } popupRect;
+  /// Screen rectangle of the suggestion list of the last frame (keeps it open while hovered).
+  ImVec2 popupMin{};
+  ImVec2 popupMax{};
 };
 
-/// Search input with autocomplete
-/// Returns true if the value changes
+/// Text input with a suggestion list below it (matches from `candidates`, see
+/// util::matchSuggestions). Up/Down select, Enter or Tab take the suggestion, Esc closes
+/// the list, a click on a suggestion takes it. Returns true when the value changed.
 bool autocompleteInput(const char *label, std::string &value, const std::vector<std::string> &candidates, AutocompleteState &st);
 
 /// "(?)" marker with tooltip.

@@ -1,16 +1,19 @@
 #pragma once
 
-#include <string_view>
+#include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
-namespace st::text {
-/// Converting UTF-8-String in relative lowercase
-/// Handles ASCII aswell as the german characters (Ä/Ö/Ü -> ä/ö/ü)
+/// Suggestions for input fields with autocompletion (e.g. customers in "Bestellungen").
+namespace st::util {
+
+/// Lower case for comparisons: ASCII and the German umlauts (Ä/Ö/Ü -> ä/ö/ü) of a UTF-8 string.
 std::string foldCase(std::string_view s);
 
-// core: matches filter - prefix-matches first then "contains", case-insensitive, max. 'limit'
-std::vector<std::string_view> matchSuggestions(std::string_view query, const std::vector<std::string> &candidates, size_t limit);
+/// Candidates matching `query` (case-insensitive), best first: prefix matches, then
+/// matches at a word start, then matches anywhere. At most `limit` results; the views
+/// point into `candidates`.
+std::vector<std::string_view> matchSuggestions(std::string_view query, const std::vector<std::string> &candidates, std::size_t limit);
 
-
-};
+} // namespace st::util

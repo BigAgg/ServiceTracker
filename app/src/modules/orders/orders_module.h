@@ -2,6 +2,7 @@
 
 #include "framework/app_context.h"
 #include "framework/module.h"
+#include "framework/widgets.h"
 
 #include <st/orders/order_store.h>
 
@@ -27,6 +28,8 @@ private:
   /// List of orders; inline mode draws alternating stripes behind the entries.
   void drawOrderList(AppContext &ctx, const std::vector<std::uint64_t> &ids);
   void drawOrderEntry(AppContext &ctx, std::uint64_t id);
+  /// Customers from the settings plus all customers of existing orders.
+  std::vector<std::string> knownCustomers(const AppContext &ctx) const;
   orders::Order &draftOf(const orders::Order &stored);
   void drawNewOrderPopup(AppContext &ctx);
   void drawExportPopup(AppContext &ctx);
@@ -39,6 +42,7 @@ private:
   std::string mSearch;
   std::vector<std::uint64_t> mSearchResult;
   orders::Order mNewOrder;
+  ui::AutocompleteState mCustomerInput;
   std::uint64_t mCancelId = 0;
   std::string mCancelNote;
   std::uint64_t mPopupId = 0;
