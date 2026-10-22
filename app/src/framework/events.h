@@ -34,6 +34,9 @@ struct AlertActivated {
   std::string item;
 };
 
+/// Open the editor of the status notifications (menu "Configs").
+struct ShowStatusAlertsEditor {};
+
 /// The device list was rescanned.
 struct DevicesRescanned {};
 

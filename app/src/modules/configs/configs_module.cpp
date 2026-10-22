@@ -1,6 +1,7 @@
 #include "modules/configs/configs_module.h"
 
 #include "framework/app_context.h"
+#include "framework/events.h"
 #include "framework/platform.h"
 #include "framework/widgets.h"
 
@@ -112,6 +113,8 @@ void ConfigsModule::init(AppContext &ctx) {
   ctx.ui.addMenu("Configs", [this, &ctx] {
     if (ImGui::MenuItem("Configs bearbeiten..."))
       mOpen = true;
+    if (ImGui::MenuItem("Status-Benachrichtigungen..."))
+      ctx.events.publish(events::ShowStatusAlertsEditor{});
     if (ImGui::MenuItem("configs.json neu laden"))
       ctx.notify.check(ctx.configStore.load(), "configs.json");
     if (ImGui::MenuItem("Ordner öffnen"))

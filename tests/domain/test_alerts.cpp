@@ -1,6 +1,8 @@
 #include <doctest/doctest.h>
 
 #include "st/alerts/alert_center.h"
+#include "st/alerts/status_rules.h"
+#include "test_helpers.h"
 
 using namespace st::alerts;
 
@@ -187,4 +189,41 @@ TEST_CASE("alerts: muted channels") {
   center.report("orders.prepared", items({"1", "2"}));
   center.setMuted("orders.prepared", true);
   CHECK_FALSE(center.hasPending());
+}
+
+TEST_CASE("alerts: remove channel") {
+  AlertCenter center;
+  center.addChannel(summaryChannel());
+  center.report("orders.prepared", items({"1"}));
+  center.removeChannel("orders.prepared");
+  CHECK_FALSE(center.hasChannel("orders.prepared"));
+  CHECK_FALSE(center.hasPending());
+  CHECK(center.activeCount() == 0);
+  CHECK(center.addChannel(summaryChannel())); // can be registered again
+}
+
+TEST_CASE("status rules: defaults, normalization and file") {
+  CHECK(statusChannelId("Rechnung erstellen") == "status.rechnung erstellen");
+  CHECK(normalizeStatusRules({{" versendet ", {"TECHSUPPORT"}}, {"Versendet", {"SALES", "TECHSUPPORT"}}, {"", {"SALES"}}, {"leer", {}}}) ==
+        std::vector<StatusRule>{{"versendet", {"SALES", "TECHSUPPORT"}}});
+
+  st::test::TempDir dir;
+  StatusRuleStore store(dir / "configs/statusAlerts.json");
+  REQUIRE(store.load());
+  CHECK(store.rules() == defaultStatusRules()); // no file yet
+  CHECK(store.rules().size() == 5);
+
+  REQUIRE(store.save({{"im Versand", {"SALES"}}, {"Rechnung versendet", {"TECHSUPPORT", "SALES"}}}));
+  CHECK_FALSE(store.changedOnDisk());
+  StatusRuleStore other(dir / "configs/statusAlerts.json");
+  REQUIRE(other.load());
+  CHECK(other.rules() == std::vector<StatusRule>{{"im Versand", {"SALES"}}, {"Rechnung versendet", {"SALES", "TECHSUPPORT"}}});
+
+  REQUIRE(other.save({}));
+  CHECK(store.changedOnDisk()); // changed by another user
+  REQUIRE(store.load());
+  CHECK(store.rules().empty()); // an empty file means: no status notifications
+
+  st::test::writeText(dir / "configs/statusAlerts.json", "{}");
+  CHECK_FALSE(store.load().has_value());
 }

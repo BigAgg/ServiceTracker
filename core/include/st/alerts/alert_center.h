@@ -76,6 +76,8 @@ class AlertCenter {
 public:
   /// Registers a channel. Returns false if the id is empty or already registered.
   bool addChannel(Channel channel);
+  /// Removes a channel and its queued notifications (e.g. a deleted status rule).
+  void removeChannel(std::string_view id);
   bool hasChannel(std::string_view id) const;
   const Channel *channel(std::string_view id) const;
   /// Channels in registration order.

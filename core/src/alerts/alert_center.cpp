@@ -14,6 +14,11 @@ bool AlertCenter::addChannel(Channel channel) {
   return true;
 }
 
+void AlertCenter::removeChannel(std::string_view id) {
+  std::erase_if(mStates, [&](const State &s) { return s.channel.id == id; });
+  std::erase_if(mPending, [&](const Notification &n) { return n.channel == id; });
+}
+
 bool AlertCenter::hasChannel(std::string_view id) const { return find(id) != nullptr; }
 
 const Channel *AlertCenter::channel(std::string_view id) const {

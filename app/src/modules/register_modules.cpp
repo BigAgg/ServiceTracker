@@ -9,6 +9,7 @@
 #include "modules/history/history_module.h"
 #include "modules/orders/orders_module.h"
 #include "modules/service/service_module.h"
+#include "modules/statusalerts/statusalerts_module.h"
 #include "modules/users/users_module.h"
 
 namespace st::app {
@@ -28,6 +29,7 @@ void registerModules(ModuleRegistry &registry) {
   registry.add<ConfigsModule>();
   registry.add<UsersModule>();
   registry.add<ChangesModule>();
+  registry.add<StatusAlertsModule>();
 }
 
 } // namespace st::app

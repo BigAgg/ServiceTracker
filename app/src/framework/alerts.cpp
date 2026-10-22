@@ -24,6 +24,15 @@ bool Alerts::addChannel(const AppContext &ctx, alerts::Channel channel) {
   return true;
 }
 
+void Alerts::removeChannel(std::string_view channel) {
+  mCenter.removeChannel(channel);
+  if (auto it = mOnScreen.find(channel); it != mOnScreen.end()) {
+    if (mNotifier)
+      mNotifier->withdraw(*it);
+    mOnScreen.erase(it);
+  }
+}
+
 void Alerts::showTest(AppContext &ctx, std::string_view channelId) {
   const alerts::Channel *channel = mCenter.channel(channelId);
   if (!channel)

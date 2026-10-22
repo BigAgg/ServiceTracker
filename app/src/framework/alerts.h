@@ -41,6 +41,8 @@ public:
   /// Registers `channel` if the current user belongs to its audience.
   /// Returns true if the user receives this channel.
   bool addChannel(const AppContext &ctx, alerts::Channel channel);
+  /// Removes a channel (e.g. a deleted status rule) and its notification on screen.
+  void removeChannel(std::string_view channel);
   /// True if the user receives the channel.
   bool subscribed(std::string_view channel) const { return mCenter.hasChannel(channel); }
 

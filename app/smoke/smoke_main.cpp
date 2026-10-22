@@ -7,7 +7,9 @@
 // any error message of the program counts as a failure.
 #include "framework/app_context.h"
 #include "framework/desktop_notifier.h"
+#include "framework/events.h"
 #include "framework/module.h"
+#include "framework/widgets.h"
 #include "modules/changes/changes_module.h"
 #include "modules/checklist/checklist_module.h"
 #include "modules/configs/configs_module.h"
@@ -17,8 +19,10 @@
 #include "modules/history/history_module.h"
 #include "modules/orders/orders_module.h"
 #include "modules/service/service_module.h"
+#include "modules/statusalerts/statusalerts_module.h"
 #include "modules/users/users_module.h"
 
+#include <st/alerts/status_rules.h>
 #include <st/checklist/actions.h>
 #include <st/checklist/document.h>
 #include <st/checklist/formats.h>
@@ -182,8 +186,9 @@ int main() {
     auto &configsModule = modules.add<app::ConfigsModule>();
     auto &usersModule = modules.add<app::UsersModule>();
     auto &changesModule = modules.add<app::ChangesModule>();
+    modules.add<app::StatusAlertsModule>();
     modules.initAll(ctx);
-    SMOKE_CHECK(modules.activeModules().size() == 10);
+    SMOKE_CHECK(modules.activeModules().size() == 11);
 
     const auto frames = [&](int count) {
       for (int i = 0; i < count; ++i) {
@@ -259,6 +264,34 @@ int main() {
       frames(3);
       SMOKE_CHECK(window && window->ContentSize.y > collapsedHeight + 100.0f); // order editor is open
       sweep("orders");
+    }
+
+    std::puts("frames: autocomplete input");
+    {
+      // ui::autocompleteInput: focus the field, suggestion list opens, Enter takes the first match
+      app::ui::AutocompleteState state;
+      state.refocus = true;
+      std::string customer = "bmg u";
+      const std::vector<std::string> candidates = {"Rota Lab Turkey", "BMG USA", "BMG UK", "Isogen Netherlands"};
+      const auto draw = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos(ImVec2(400.0f, 400.0f));
+        ImGui::Begin("Smoke Autocomplete");
+        app::ui::autocompleteInput("Kunde", customer, candidates, state);
+        ImGui::End();
+        ImGui::Render();
+      };
+      for (int i = 0; i < 3; ++i)
+        draw();
+      bool listShown = false;
+      for (ImGuiWindow *window : GImGui->Windows)
+        listShown |= window->Active && std::string_view(window->Name).starts_with("##autocomplete");
+      SMOKE_CHECK(listShown);
+      io.AddKeyEvent(ImGuiKey_Enter, true);
+      draw();
+      io.AddKeyEvent(ImGuiKey_Enter, false);
+      draw();
+      SMOKE_CHECK(customer == "BMG USA");
     }
 
     std::puts("frames: notifications");
@@ -485,6 +518,40 @@ int main() {
       SMOKE_CHECK(ctx.activeDeviceName() == "0471-77");
     }
 
+    std::puts("frames: status notifications");
+    {
+      // default rules: "versendet" -> TECHSUPPORT, "im Versand" -> SALES (smoke user has both)
+      SMOKE_CHECK(ctx.alerts.subscribed("status.versendet"));
+      SMOKE_CHECK(ctx.alerts.subscribed("status.im versand"));
+      service::ServiceRecord shipped;
+      shipped.name = "0471-77";
+      shipped.status = "Versendet"; // compared case-insensitively
+      std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+      SMOKE_CHECK(service::RecordStore(sync / "Sync.json").upsert(shipped).has_value());
+      std::this_thread::sleep_for(std::chrono::milliseconds(300));
+      frames(3);
+      SMOKE_CHECK(!notifier.shown.empty() && notifier.shown.back().body == "0471-77: Status „versendet“");
+      SMOKE_CHECK(!notifier.shown.empty() && notifier.shown.back().title == "ServiceTracker - versendet");
+      ctx.selectDevice("");
+      notifier.activation = app::DesktopNotifier::Activation{"status.versendet", "status.versendet/0471-77"};
+      frames(2);
+      SMOKE_CHECK(ctx.activeDeviceName() == "0471-77");
+
+      // another power user changes the rules: only "Rechnung erstellen" -> SALES
+      alerts::StatusRuleStore rules(configs / "statusAlerts.json");
+      SMOKE_CHECK(rules.save({{"Rechnung erstellen", {"SALES"}}}).has_value());
+      std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+      frames(2);
+      SMOKE_CHECK(!ctx.alerts.subscribed("status.versendet"));
+      SMOKE_CHECK(ctx.alerts.subscribed("status.rechnung erstellen"));
+
+      // editor dialog (menu "Configs")
+      ctx.events.publish(app::events::ShowStatusAlertsEditor{});
+      frames(3);
+      SMOKE_CHECK(ImGui::FindWindowByName("Status-Benachrichtigungen") != nullptr);
+      sweep("status alerts editor");
+    }
+
     std::puts("frames: other device, no device");
     ctx.selectDevice("0471-77");
     frames(5);
@@ -495,6 +562,53 @@ int main() {
     SMOKE_CHECK(idConflicts == 0);
     for (const auto &name : hovered)
       std::printf("hovered window: %s\n", name.c_str());
+  }
+
+  std::puts("offline: external service at the customer (network drive missing)");
+  {
+    const fs::path offline = root / "offline";
+    const fs::path localExtern = offline / "local" / "extern";
+    const fs::path copy = localExtern / "0601-1234";
+    fs::create_directories(copy / "Service_2026.12.24");
+    write(copy / "Service_2026.12.24" / "0601-1234_Checklist.json", checklist::writeJson(templateChecklist()));
+    service::ServiceRecord record;
+    record.name = "0601-1234";
+    record.path = util::pathToUtf8(offline / "Y" / "Geraete" / "0601 FLUOstar" / "0601-1234");
+    record.status = "extern";
+    record.activeService = "Service_2026.12.24";
+    SMOKE_CHECK(service::RecordStore(localExtern / "extern_local.json").upsert(record).has_value());
+    fs::create_directories(offline / "work");
+    write(offline / "work" / "users_cache.bin", users::encodeUserTable({users::User{"techniker", {"TECHSUPPORT"}, false}}));
+
+    config::Settings offlineSettings;
+    const auto missing = [&](const char *name) { return util::pathToUtf8(offline / "Y" / name); };
+    offlineSettings.paths.usersFile = missing("users.bin");
+    offlineSettings.paths.requestsDir = missing("REQUESTS");
+    offlineSettings.paths.devicesRoot = missing("Geraete");
+    offlineSettings.paths.configsDir = missing("configs");
+    offlineSettings.paths.syncDir = missing("SYNC");
+    offlineSettings.paths.externFile = missing("SYNC/extern.json");
+    offlineSettings.paths.ordersFile = missing("SYNC/Bestellungen.json");
+    offlineSettings.paths.externLocalDir = util::pathToUtf8(localExtern);
+    offlineSettings.bootstrapAdmin = "admin";
+
+    app::AppContext ctx(offlineSettings, "techniker", offline / "work");
+    ctx.initialize();
+    SMOKE_CHECK(!ctx.syncAvailable());
+    SMOKE_CHECK(ctx.hasAccess(users::groups::Techsupport)); // permissions from the local cache
+    SMOKE_CHECK(ctx.deviceRegistry.find("0601-1234") != nullptr);
+    SMOKE_CHECK(ctx.statusIndex().statusOf("0601-1234") == "extern");
+    SMOKE_CHECK(app::ExternModule().available(ctx));
+    SMOKE_CHECK(!app::OrdersModule().available(ctx));
+    ctx.selectDevice("0601-1234");
+    SMOKE_CHECK(ctx.activeRecord().status == "extern");
+    SMOKE_CHECK(ctx.selectedService() == "Service_2026.12.24");
+    const auto *device = ctx.activeDevice();
+    SMOKE_CHECK(device != nullptr);
+    if (device) {
+      const auto found = ctx.services().findChecklist(*device, ctx.selectedService(), ctx.activeRecord());
+      SMOKE_CHECK(found && found->parent_path() == copy / "Service_2026.12.24");
+    }
   }
   ImGui::DestroyContext();
   std::error_code ec;
