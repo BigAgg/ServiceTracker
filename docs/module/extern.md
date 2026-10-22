@@ -38,6 +38,22 @@ Services, die beim Kunden durchgeführt werden. Fenster: **Externe Services**
 
 „Aus Liste entfernen“ bricht einen externen Service ab (die lokale Kopie bleibt erhalten).
 
+## Offline beim Kunden
+
+Ist das Netzlaufwerk beim Programmstart nicht erreichbar, startet ServiceTracker im
+**Offline-Modus** (Statuszeile „Offline“):
+
+- **Berechtigungen** kommen aus dem zuletzt gespeicherten Stand (`users_cache.bin` im
+  Programmordner, wird bei jedem Start im Haus aktualisiert, enthält nur den eigenen Eintrag).
+- **Reader Control** zeigt die Geräte mit lokaler Kopie auf diesem PC (aus
+  `extern/extern_local.json`), mit Status und laufendem Service.
+- **Externe Services**, **Checkliste**, **Service Control** (Service-Liste aus der lokalen
+  Kopie) und der Filewalker der lokalen Kopie funktionieren; gespeichert wird lokal.
+- Nicht offline möglich: „Extern abschließen“, „Als "extern" markieren“, „Aus Liste
+  entfernen“, Bestellungen, Historie und alles andere, was das Netzlaufwerk braucht.
+- Wird das Netzlaufwerk wieder erreichbar, erscheint ein Hinweis; nach einem Neustart sind
+  alle Funktionen wieder da, die Checkliste wird dann automatisch abgeglichen.
+
 ## Dateien
 
 | Datei | Inhalt |
@@ -45,6 +61,8 @@ Services, die beim Kunden durchgeführt werden. Fenster: **Externe Services**
 | `SYNC/extern.json` | laufende externe Services bis zum Fertigmelden |
 | `SYNC/History_extern.json` | abgeschlossene externe Services (Format wie `History.json`) |
 | `extern/<Gerät>/` (lokal) | Arbeitskopie des Geräteordners |
+| `extern/extern_local.json` (lokal) | externe Services mit lokaler Kopie auf diesem PC (für den Offline-Modus) |
+| `users_cache.bin` (Programmordner) | eigene Berechtigungen für den Offline-Modus |
 
 ## Status
 

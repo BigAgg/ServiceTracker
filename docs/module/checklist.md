@@ -3,8 +3,8 @@
 Fenster: **Checkliste** (alle), **Checklisten Editor** (Poweruser).
 
 ## Checkliste
-- Zeigt die Checkliste des gewählten Service. Arbeitsgänge, die noch Arbeit brauchen und
-  für die der Benutzer berechtigt ist, sind beim Öffnen aufgeklappt.
+- Zeigt die Checkliste des gewählten Service. Beim Öffnen sind alle Arbeitsgänge
+  zugeklappt; „Alle auf/zu“ öffnet bzw. schließt alle.
 - Kopfzeile je Arbeitsgang: `[erledigt/gesamt]`, bei Abschluss Benutzer und Zeit.
 - Fortschrittsbalken, „Alle auf/zu“, Filter „Nur offene Aufgaben“.
 - **Speichern automatisch** nach `autosaveDelayMs` (Standard 2 s) und beim Gerätewechsel;

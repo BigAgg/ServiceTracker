@@ -30,6 +30,9 @@ Beide Versionen können während der Umstellung parallel benutzt werden.
 - **Benachrichtigungen** (neu): Windows-Benachrichtigung und roter Punkt in der Taskleiste –
   `SALES` bei versandbereiten Bestellungen, `TECHSUPPORT` bei neuen Geräten im Wareneingang
   ([benachrichtigungen.md](benachrichtigungen.md)).
+- **Status-Benachrichtigungen**: konfigurierbare Regeln „Status → Abteilungen“
+  ([module/statusalerts.md](module/statusalerts.md)).
+- **Offline-Modus** für externe Services beim Kunden ([module/extern.md](module/extern.md)).
 - Alle Pfade über `ServiceTracker.json` konfigurierbar (Testumgebungen ohne `Y:`).
 
 ## Behobene Fehler aus Version 1

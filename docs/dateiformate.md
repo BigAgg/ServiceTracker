@@ -20,6 +20,9 @@ Alle Dateien sind UTF-8. Geschrieben wird immer atomar (Temp-Datei + Umbenennen)
 | `<Gerät>_SR_<Datum>.html` | Service- und Geräteordner | Service Record | `checklist/export.h` |
 | `style.txt` | `SYNC/` | optionaler HTML-Kopf für Records | `checklist/export.h` |
 | `configs.json` | `configs/` | Gerätekonfigurationen | `devices/device_config.h` |
+| `statusAlerts.json` | `configs/` | Status-Benachrichtigungen (neu): `[{"status", "groups"}]` | `alerts/status_rules.h` |
+| `extern_local.json` | `extern/` (lokal) | externe Services mit lokaler Kopie (neu, Format wie `Sync.json`) | `service/records.h` |
+| `users_cache.bin` | Programmordner | eigener Eintrag aus `users.bin` für den Offline-Modus (neu, gleiches Format) | `users/user_store.h` |
 | `users.bin` | `ServiceCreatorApp/` | Benutzer + Rechte | `users/user_store.h` |
 | `Bestellungen*.json` | `SYNC/` | Bestellungen | `orders/order_store.h` |
 | `REQUESTS/<id>/info.txt` | `ServiceCreatorApp/` | Änderungswünsche | `changes/change_requests.h` |

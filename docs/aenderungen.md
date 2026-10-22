@@ -4,6 +4,21 @@ Alle Änderungen am Programm, neueste zuerst. Jede Änderung wird hier mit einem
 für Anwender und einem Verweis auf die ausführliche Doku eingetragen. Der Vergleich mit
 Version 1 steht in [migration.md](migration.md).
 
+## 2026-10-22 (Version 2.0.2)
+
+- **Offline beim Kunden** ([module/extern.md](module/extern.md#offline-beim-kunden)):
+  Berechtigungen werden lokal zwischengespeichert, Reader Control zeigt offline die Geräte
+  mit lokaler Kopie, das Fenster „Externe Services“ und die Checkliste der lokalen Kopie
+  sind verfügbar. Hinweis, sobald das Netzlaufwerk wieder erreichbar ist.
+- **Status-Benachrichtigungen** ([module/statusalerts.md](module/statusalerts.md)):
+  Windows-Benachrichtigung, sobald ein Gerät mit einem bestimmten Status erscheint –
+  mitgeliefert: „versendet“, „extern abgeschlossen“, „Rechnung versendet“ → `TECHSUPPORT`,
+  „im Versand“, „Rechnung erstellen“ → `SALES`. Poweruser pflegen die Regeln unter
+  Configs → Status-Benachrichtigungen (gemeinsame Datei `configs/statusAlerts.json`).
+- **Bestellungen**: Kunde mit Autovervollständigung (inkl. Kunden bisheriger Bestellungen),
+  erweiterte Liste bekannter Kunden.
+- **Checkliste**: Arbeitsgänge sind beim Öffnen zugeklappt.
+
 ## 2026-10-16
 
 - **Externe Services – neuer Ablauf** ([module/extern.md](module/extern.md)):

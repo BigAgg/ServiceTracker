@@ -2,7 +2,9 @@
 
 Ersatzteilbestellungen (POs). Fenster: **Bestellungen** (`TECHSUPPORT` oder `SALES`).
 
-- **Bestellung anlegen** (`TECHSUPPORT` und `SALES`): Kunde (bekannte Kunden + bisherige),
+- **Bestellung anlegen** (`TECHSUPPORT` und `SALES`): Kunde mit **Autovervollständigung**
+  (Vorschläge aus `knownCustomers` + Kunden bisheriger Bestellungen; Pfeiltasten wählen,
+  Enter/Tab übernimmt, Esc schließt die Liste) oder Auswahl „Bekannte Kunden...“,
   Bestellnummer, Eingangsdatum (vorbelegt mit heute), Express.
 - Status-Gruppen farbig mit Anzahl; Fenster-Tab markiert, solange Bestellungen
   „Versandbereit“ sind.

@@ -20,6 +20,7 @@ Berechtigungsgruppen (Benutzerverwaltung): `SERVICE_CREATOR`, `SERVICE_CREATOR_E
 | [configs](module/configs.md) | Menü „Configs“ | Poweruser | Ordner, Vorlagen, EEPROM-Regeln je Projekt |
 | [users](module/users.md) | Menü „Benutzer“ | Poweruser | Benutzer und Abteilungen |
 | [changes](module/changes.md) | Menü „Änderungen“ | alle | Änderungswünsche |
+| [statusalerts](module/statusalerts.md) | Configs → Status-Benachrichtigungen | alle / Poweruser | Windows-Benachrichtigung bei bestimmten Status |
 
 Querschnittsthemen: [Benachrichtigungen](benachrichtigungen.md),
 [Dateiformate](dateiformate.md), [Konfiguration](konfiguration.md).

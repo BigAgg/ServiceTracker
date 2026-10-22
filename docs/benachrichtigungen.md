@@ -44,6 +44,25 @@ Hinweise:
 „Wareneingang“ auftaucht – neu angelegt oder z. B. ein erwartetes Gerät, das eingetroffen
 ist. Wer den Service selbst anlegt, bekommt keine Meldung.
 
+### Status-Benachrichtigungen (bearbeitbar)
+
+Zusätzlich gibt es frei konfigurierbare Regeln „Status → Abteilungen“: sobald ein Gerät mit
+dem Status in der Liste erscheint, bekommen die Abteilungen „*Gerät*: Status „*Status*““
+(Titel „ServiceTracker - *Status*“, Klick wählt das Gerät aus). Kanal-ID
+`status.<status in Kleinbuchstaben>`. Gepflegt von Powerusern unter
+**Configs → Status-Benachrichtigungen...**, gespeichert in `configs/statusAlerts.json`
+(gilt für alle). Mitgelieferte Regeln, solange die Datei fehlt:
+
+| Status | Abteilungen |
+|---|---|
+| `versendet` | `TECHSUPPORT` |
+| `extern abgeschlossen` | `TECHSUPPORT` |
+| `im Versand` | `SALES` |
+| `Rechnung erstellen` | `SALES` |
+| `Rechnung versendet` | `TECHSUPPORT` |
+
+Details: [module/statusalerts.md](module/statusalerts.md).
+
 ## Für Entwickler: neue Benachrichtigung einbauen
 
 Die Logik (was ist neu, wann wird gemeldet, Stummschalten) liegt testbar in

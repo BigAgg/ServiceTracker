@@ -12,6 +12,8 @@ Projekt-Konfigurationen bearbeiten (`configs.json`). Dialog **Reader Configs** (
   - **Basis-Konfiguration** und **EEPROM-Adressregeln** (Adresse, Wert, Konfiguration,
     zusätzliche Ordner).
 - „Speichern“ schreibt `configs.json`; unbekannte Schlüssel bleiben erhalten.
+- Menüeintrag **Status-Benachrichtigungen...** öffnet den Editor der
+  [Status-Benachrichtigungen](statusalerts.md).
 
 **Dateien:** `configs.json` (neuer optionaler Schlüssel `filesExtern`, siehe
 [dateiformate.md](../dateiformate.md)).

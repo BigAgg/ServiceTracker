@@ -258,7 +258,8 @@ Vorhandene Namen niemals umbenennen – sie stehen in bestehenden Checklisten-Da
 `ui::Disabled`, `ui::ScopedId`, `ui::searchField` (Strg+F, Esc leert), `ui::confirmButton`,
 `ui::statusBadge`/`statusColor`, `ui::inputMultiline` (wächst mit), `ui::todayButton`,
 `ui::help`, `ui::errorText`, `ui::hintText`, `ui::copyContextMenu`, `ui::listBox`,
-`ui::StripedRow` (abwechselnd hinterlegte Listeneinträge, auch aufgeklappt).
+`ui::StripedRow` (abwechselnd hinterlegte Listeneinträge, auch aufgeklappt),
+`ui::autocompleteInput` (Eingabe mit Vorschlagsliste, Zustand `ui::AutocompleteState` als Member).
 Neue, mehrfach genutzte Bausteine dort ergänzen statt in Modulen zu kopieren.
 
 ### Regeln für Module

@@ -24,6 +24,7 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
     - Für externe Services können in den Configs eigene Vorlagen (z. B. eine andere Checkliste) hinterlegt werden
 - Gearbeitet wird im lokalen Verzeichnis
     - Wenn man intern arbeitet und Zugriff auf den Geräte-Ordner hat, wird die Checkliste mit dem Geräteordner synchronisiert
+    - Ohne Verbindung zum Netzlaufwerk (beim Kunden) startet das Programm offline: eigene Berechtigungen aus dem lokalen Stand, Geräte mit lokaler Kopie, Arbeit nur lokal
 - Wenn der Servicetechniker wieder im Haus ist, schließt er den Service extern ab
     - Die Checkliste wird ein letztes Mal synchronisiert, der lokale Geräte-Ordner wird über den originalen kopiert, die lokalen Dateien werden gelöscht
     - Status "extern abgeschlossen"
@@ -37,14 +38,3 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
 - In den versand gestellt und datum eingetragen
 - Versendet und Rechnungsnummer sowie versanddatum werden eingetragen
 - Bestellung wird abgeschlossen
-
-## Benutzungsänderungen:
-
-- Für den externen service ist es aktuell nicht möglich offline zu arbeiten. die readerliste wird nicht geladen der lokal angelegten services.
-- fenster wie "Externe Services" werden nicht erstellt und fehlen somit.
-- Möglicherweise kopiere den aktuellen stand meiner berechtigungen lokal und greife im offline fall darauf zurück?
-- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "versendet" auftaucht für alle mitarbeiter im TECHSUPPORT
-- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "Extern abschließen" auftaucht für alle mitarbeiter im TECHSUPPORT
-- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "im Versand" auftaucht für alle mitarbeiter in SALES
-- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "Rechnung erstellen"
-- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "Rechnung versendet" auftaucht für alle mitarbeiter in TECHSUPPORT
