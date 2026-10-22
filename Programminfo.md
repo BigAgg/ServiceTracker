@@ -37,3 +37,14 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
 - In den versand gestellt und datum eingetragen
 - Versendet und Rechnungsnummer sowie versanddatum werden eingetragen
 - Bestellung wird abgeschlossen
+
+## Benutzungsänderungen:
+
+- Für den externen service ist es aktuell nicht möglich offline zu arbeiten. die readerliste wird nicht geladen der lokal angelegten services.
+- fenster wie "Externe Services" werden nicht erstellt und fehlen somit.
+- Möglicherweise kopiere den aktuellen stand meiner berechtigungen lokal und greife im offline fall darauf zurück?
+- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "versendet" auftaucht für alle mitarbeiter im TECHSUPPORT
+- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "Extern abschließen" auftaucht für alle mitarbeiter im TECHSUPPORT
+- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "im Versand" auftaucht für alle mitarbeiter in SALES
+- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "Rechnung erstellen"
+- erstelle eine windows benachrichtigung, wenn ein reader mit dem status "Rechnung versendet" auftaucht für alle mitarbeiter in TECHSUPPORT
