@@ -302,6 +302,49 @@ TEST_CASE("external service: working offline at the customer") {
   CHECK(m.localExternRecords()->empty()); // removed from the local list
 }
 
+TEST_CASE("external service: local copies without list entry are found") {
+  Fixture f;
+  auto &m = *f.manager;
+  // copy made by an older version / by hand: only the folder exists
+  const auto copy = m.externCopyFor(f.device);
+  REQUIRE(util::createDirectories(copy / "Service_2020.01.01"));
+  REQUIRE(util::createDirectories(copy / "Service_2026.05.01"));
+  REQUIRE(util::createDirectories(f.dir / "local/extern/kein-geraet")); // no service folders: ignored
+  auto local = m.localExternRecords();
+  REQUIRE(local.has_value());
+  REQUIRE(local->size() == 1);
+  CHECK((*local)[0].name == "0601-1234");
+  CHECK((*local)[0].status == "geplant extern");
+  CHECK((*local)[0].activeService == "Service_2026.05.01"); // newest
+  CHECK((*local)[0].services.size() == 2);
+  CHECK(m.hasLocalCopy(f.device));
+}
+
+TEST_CASE("external service: copy to local for the technician") {
+  Fixture f;
+  auto &m = *f.manager;
+  REQUIRE(m.createExternService(f.device, "2026.04.01", "", f.ts.session).has_value());
+  // created by a colleague: remove the copy on "this" PC
+  REQUIRE(util::removeAll(m.externCopyFor(f.device)));
+  REQUIRE(m.environment().localExternStore.remove("0601-1234"));
+  CHECK_FALSE(m.hasLocalCopy(f.device));
+
+  REQUIRE(m.copyExternToLocal(f.device));
+  CHECK(util::pathExists(m.externCopyFor(f.device) / "Service_2026.04.01/0601-1234_Checklist_2026.04.01.json"));
+  CHECK((*m.environment().localExternStore.find("0601-1234")).has_value());
+  CHECK_FALSE(m.copyExternToLocal(f.device).has_value()); // never overwrite local work
+
+  // colleague marks it "extern": the local list follows while online
+  auto marked = *m.recordFor(f.device);
+  marked.status = "extern";
+  m.refreshLocalExtern({marked});
+  CHECK((*m.environment().localExternStore.find("0601-1234"))->status == "extern");
+
+  // no external service: refused
+  Fixture g;
+  CHECK_FALSE(g.manager->copyExternToLocal(g.device).has_value());
+}
+
 TEST_CASE("external service: cancelling removes it from the local list") {
   Fixture f;
   REQUIRE(f.manager->createExternService(f.device, "2026.04.01", "", f.ts.session).has_value());

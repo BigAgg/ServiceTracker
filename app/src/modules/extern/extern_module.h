@@ -5,6 +5,7 @@
 
 #include <st/service/records.h>
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,8 @@ private:
   void finish(AppContext &ctx);
 
   std::vector<service::ServiceRecord> mList;
+  /// Devices with a local copy on this PC.
+  std::set<std::string> mLocal;
   std::int64_t mListTime = -1;
   PollTimer mPoll;
   std::string mDate;

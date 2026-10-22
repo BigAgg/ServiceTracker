@@ -78,7 +78,8 @@ void DevicesModule::reportReceived(AppContext &ctx) {
 }
 
 void DevicesModule::refilter(AppContext &ctx) {
-  mFilter.showClosed = ctx.prefs().showClosedDevices;
+  // Offline the list only holds the local external services: show all of them
+  mFilter.showClosed = ctx.prefs().showClosedDevices || !ctx.syncAvailable();
   mFiltered = service::filterDevices(ctx.deviceRegistry, ctx.statusIndex(), mFilter);
   mDirty = false;
 }

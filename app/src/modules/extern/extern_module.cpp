@@ -39,9 +39,22 @@ void ExternModule::update(AppContext &ctx) {
 void ExternModule::reload(AppContext &ctx) {
   const auto &store = ctx.services().environment().externStore;
   mListTime = store.lastWriteTime();
-  auto list = ctx.syncAvailable() ? store.loadAll() : ctx.services().localExternRecords();
-  if (list)
-    mList = std::move(*list);
+  auto &services = ctx.services();
+  auto list = ctx.syncAvailable() ? store.loadAll() : services.localExternRecords();
+  if (!list)
+    return;
+  mList = std::move(*list);
+  mLocal.clear();
+  if (ctx.syncAvailable())
+    services.refreshLocalExtern(mList);
+  // Every local copy on this PC is listed, also without an entry in extern.json
+  if (auto local = services.localExternRecords()) {
+    for (auto &record : *local) {
+      mLocal.insert(record.name);
+      if (std::none_of(mList.begin(), mList.end(), [&](const service::ServiceRecord &r) { return r.name == record.name; }))
+        mList.push_back(std::move(record));
+    }
+  }
 }
 
 void ExternModule::drawPlanning(AppContext &ctx) {
@@ -91,12 +104,13 @@ void ExternModule::drawWindow(AppContext &ctx) {
   }
 
   ImGui::SeparatorText("Externe Services");
-  if (ImGui::BeginTable("##extern", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY,
+  if (ImGui::BeginTable("##extern", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY,
                         ImVec2(0.0f, 10.0f * ImGui::GetTextLineHeightWithSpacing()))) {
     ImGui::TableSetupScrollFreeze(0, 1);
     ImGui::TableSetupColumn("Gerät");
     ImGui::TableSetupColumn("Service");
     ImGui::TableSetupColumn("Status");
+    ImGui::TableSetupColumn("Lokal", ImGuiTableColumnFlags_WidthFixed);
     ImGui::TableHeadersRow();
     for (const auto &r : mList) {
       ui::ScopedId id(r.name.c_str());
@@ -110,6 +124,15 @@ void ExternModule::drawWindow(AppContext &ctx) {
       ImGui::TextUnformatted(r.activeService.c_str());
       ImGui::TableSetColumnIndex(2);
       ui::statusBadge(ctx.statusIndex().statusOf(r.name).empty() ? r.status : ctx.statusIndex().statusOf(r.name));
+      ImGui::TableSetColumnIndex(3);
+      if (mLocal.contains(r.name)) {
+        ImGui::TextUnformatted("ja");
+        ImGui::SetItemTooltip("Lokale Kopie auf diesem PC:\n%s",
+                              util::pathToUtf8(ctx.services().environment().externLocalDir / util::pathFromUtf8(r.name)).c_str());
+      } else {
+        ImGui::TextDisabled("-");
+        ImGui::SetItemTooltip("Keine lokale Kopie auf diesem PC (\"Ordner lokal kopieren\")");
+      }
     }
     ImGui::EndTable();
   }
@@ -138,8 +161,26 @@ void ExternModule::drawWindow(AppContext &ctx) {
     ImGui::SetItemTooltip("Techniker ist beim Kunden");
   }
   ImGui::SameLine();
+  const bool localCopy = device && ctx.services().hasLocalCopy(*device);
   {
-    ui::Disabled d(!device || !util::isDirectory(device ? ctx.services().externCopyFor(*device) : util::fs::path()));
+    ui::Disabled d(!externalActive || !online || localCopy || !ctx.deviceRegistry.hasAccess());
+    if (ImGui::Button("Ordner lokal kopieren") && device) {
+      if (ctx.notify.check(ctx.services().copyExternToLocal(*device), "Ordner lokal kopieren")) {
+        reload(ctx);
+        ctx.notify.success(device->name + ": Geräteordner lokal kopiert – es kann beim Kunden gearbeitet werden.");
+        // open the checklist of the local copy
+        const std::string service = ctx.selectedService();
+        ctx.selectService({});
+        ctx.selectService(service);
+      }
+    }
+    ImGui::SetItemTooltip(localCopy ? "Lokale Kopie ist bereits vorhanden"
+                                    : "Für den Techniker, der zum Kunden fährt, wenn ein Kollege den Service angelegt hat:\n"
+                                      "kopiert den Geräteordner auf diesen PC (Arbeit offline möglich)");
+  }
+  ImGui::SameLine();
+  {
+    ui::Disabled d(!localCopy);
     if (ImGui::Button("Lokalen Ordner öffnen") && device)
       platform::openPath(ctx.services().externCopyFor(*device));
   }

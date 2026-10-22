@@ -6,6 +6,10 @@ Version 1 steht in [migration.md](migration.md).
 
 ## 2026-10-22 (Version 2.0.2)
 
+- **Externe Services offline**: jede lokale Kopie erscheint offline in Reader Control (auch
+  ohne Suchtext) und in „Externe Services“ – auch Kopien ohne Listeneintrag. Neue Spalte
+  „Lokal“ und Button **„Ordner lokal kopieren“** für den Techniker, wenn ein Kollege den
+  externen Service angelegt hat ([module/extern.md](module/extern.md)).
 - **Offline beim Kunden** ([module/extern.md](module/extern.md#offline-beim-kunden)):
   Berechtigungen werden lokal zwischengespeichert, Reader Control zeigt offline die Geräte
   mit lokaler Kopie, das Fenster „Externe Services“ und die Checkliste der lokalen Kopie

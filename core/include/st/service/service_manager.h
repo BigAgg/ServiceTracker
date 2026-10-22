@@ -113,8 +113,19 @@ public:
   /// last time, copies the local device folder over the original, deletes the local
   /// copy and sets "extern abgeschlossen". Requires access to the device folder.
   util::Result<ServiceRecord> finishExternService(const devices::Device &device);
-  /// Records of the external services with a local copy on this PC (offline view).
+  /// One record per local copy (folder in externLocalDir) on this PC. Known services
+  /// come from extern_local.json; copies without an entry (created by an older version
+  /// or copied by hand) get status "geplant extern" and their newest service folder.
+  /// Used offline and to show local copies in "Externe Services".
   util::Result<std::vector<ServiceRecord>> localExternRecords() const;
+  /// True if a local copy of the device exists on this PC.
+  bool hasLocalCopy(const devices::Device &device) const;
+  /// "Ordner lokal kopieren": copies the device folder of a running external service
+  /// (e.g. created by a colleague) to this PC. Refused if a local copy already exists.
+  util::Status copyExternToLocal(const devices::Device &device);
+  /// Takes the current state of the shared extern.json over into the local list for
+  /// devices with a local copy (status changes of colleagues are known offline).
+  void refreshLocalExtern(const std::vector<ServiceRecord> &externRecords) const;
   /// Removes an external service from both lists. The local copy is kept.
   util::Status cancelExternService(const devices::Device &device);
 

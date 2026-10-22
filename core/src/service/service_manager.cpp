@@ -111,12 +111,61 @@ void ServiceManager::updateLocalExtern(const ServiceRecord &record) const {
 }
 
 util::Result<std::vector<ServiceRecord>> ServiceManager::localExternRecords() const {
-  auto records = mEnv.localExternStore.loadAll();
-  if (!records)
-    return records;
-  // only entries whose local copy still exists
-  std::erase_if(*records, [&](const ServiceRecord &r) { return !util::isDirectory(mEnv.externLocalDir / util::pathFromUtf8(r.name)); });
-  return records;
+  auto known = mEnv.localExternStore.loadAll();
+  if (!known)
+    return known;
+  std::vector<ServiceRecord> out;
+  for (const auto &folder : util::listDirectory(mEnv.externLocalDir, true, false)) {
+    const std::string name = u8(folder.filename());
+    auto it = std::find_if(known->begin(), known->end(), [&](const ServiceRecord &r) { return r.name == name; });
+    ServiceRecord record = it != known->end() ? *it : ServiceRecord{};
+    record.name = name;
+    record.services.clear();
+    for (const auto &dir : util::listDirectory(folder, true, false))
+      if (std::string service = u8(dir.filename()); service.starts_with("Service_"))
+        record.services.push_back(std::move(service));
+    std::sort(record.services.begin(), record.services.end());
+    if (record.services.empty())
+      continue; // not a device copy
+    if (!isExternalWorkStatus(record.status))
+      record.status = status::PlannedExternal;
+    if (record.activeService.empty() ||
+        std::find(record.services.begin(), record.services.end(), record.activeService) == record.services.end())
+      record.activeService = record.services.back();
+    out.push_back(std::move(record));
+  }
+  return out;
+}
+
+bool ServiceManager::hasLocalCopy(const devices::Device &device) const { return util::isDirectory(externCopyFor(device)); }
+
+util::Status ServiceManager::copyExternToLocal(const devices::Device &device) {
+  auto record = recordFor(device);
+  if (!record)
+    return std::unexpected(record.error());
+  if (!isExternalWorkStatus(record->status))
+    return std::unexpected(error(device.name + " hat keinen laufenden externen Service"));
+  if (hasLocalCopy(device))
+    return std::unexpected(error("Lokale Kopie existiert bereits: " + u8(externCopyFor(device))));
+  if (!util::isDirectory(device.path))
+    return std::unexpected(error("Geräteordner nicht erreichbar: " + u8(device.path)));
+  if (auto s = util::copyTree(device.path, externCopyFor(device)); !s)
+    return s;
+  updateLocalExtern(*record);
+  log::info("Externer Service lokal kopiert: {} -> {}", device.name, u8(externCopyFor(device)));
+  return {};
+}
+
+void ServiceManager::refreshLocalExtern(const std::vector<ServiceRecord> &externRecords) const {
+  for (const auto &record : externRecords) {
+    if (!util::isDirectory(mEnv.externLocalDir / util::pathFromUtf8(record.name)) || !isExternalWorkStatus(record.status))
+      continue;
+    auto known = mEnv.localExternStore.find(record.name);
+    if (known && *known && (*known)->status == record.status && (*known)->activeService == record.activeService &&
+        (*known)->additionalInfo == record.additionalInfo)
+      continue;
+    updateLocalExtern(record);
+  }
 }
 
 util::Status ServiceManager::createServiceFolders(const devices::Device &device, const fs::path &serviceFolder) const {

@@ -38,6 +38,18 @@ Services, die beim Kunden durchgeführt werden. Fenster: **Externe Services**
 
 „Aus Liste entfernen“ bricht einen externen Service ab (die lokale Kopie bleibt erhalten).
 
+## Liste „Externe Services“ und lokale Kopien
+
+- Die Liste zeigt alle externen Services aus `extern.json` **und jede lokale Kopie auf diesem
+  PC** (auch ohne Eintrag, z. B. mit einer älteren Version angelegt). Spalte **Lokal**: „ja“,
+  wenn auf diesem PC eine Kopie liegt (Tooltip zeigt den Pfad).
+- **Ordner lokal kopieren**: hat ein Kollege den externen Service angelegt, kopiert der
+  Techniker, der zum Kunden fährt, damit den Geräteordner auf seinen PC. Nur im Haus, nur bei
+  laufendem externem Service und nur, wenn noch keine lokale Kopie existiert (lokale Arbeit
+  wird nie überschrieben). Danach wird die Checkliste der lokalen Kopie geöffnet.
+- Im Haus wird der Status aus `extern.json` in die lokale Liste übernommen, damit er offline
+  bekannt ist.
+
 ## Offline beim Kunden
 
 Ist das Netzlaufwerk beim Programmstart nicht erreichbar, startet ServiceTracker im
@@ -45,8 +57,10 @@ Ist das Netzlaufwerk beim Programmstart nicht erreichbar, startet ServiceTracker
 
 - **Berechtigungen** kommen aus dem zuletzt gespeicherten Stand (`users_cache.bin` im
   Programmordner, wird bei jedem Start im Haus aktualisiert, enthält nur den eigenen Eintrag).
-- **Reader Control** zeigt die Geräte mit lokaler Kopie auf diesem PC (aus
-  `extern/extern_local.json`), mit Status und laufendem Service.
+- **Reader Control** zeigt alle Geräte mit lokaler Kopie auf diesem PC – auch ohne Suchtext
+  und auch mit Status „geplant extern“. Status und laufender Service kommen aus
+  `extern/extern_local.json`; Kopien ohne Eintrag erscheinen als „geplant extern“ mit ihrem
+  neuesten Service-Ordner.
 - **Externe Services**, **Checkliste**, **Service Control** (Service-Liste aus der lokalen
   Kopie) und der Filewalker der lokalen Kopie funktionieren; gespeichert wird lokal.
 - Nicht offline möglich: „Extern abschließen“, „Als "extern" markieren“, „Aus Liste

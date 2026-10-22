@@ -577,6 +577,8 @@ int main() {
     record.status = "extern";
     record.activeService = "Service_2026.12.24";
     SMOKE_CHECK(service::RecordStore(localExtern / "extern_local.json").upsert(record).has_value());
+    // copy without list entry (older version / copied by hand)
+    fs::create_directories(localExtern / "0471-77" / "Service_2026.10.01");
     fs::create_directories(offline / "work");
     write(offline / "work" / "users_cache.bin", users::encodeUserTable({users::User{"techniker", {"TECHSUPPORT"}, false}}));
 
@@ -598,6 +600,13 @@ int main() {
     SMOKE_CHECK(ctx.hasAccess(users::groups::Techsupport)); // permissions from the local cache
     SMOKE_CHECK(ctx.deviceRegistry.find("0601-1234") != nullptr);
     SMOKE_CHECK(ctx.statusIndex().statusOf("0601-1234") == "extern");
+    SMOKE_CHECK(ctx.deviceRegistry.find("0471-77") != nullptr);
+    SMOKE_CHECK(ctx.statusIndex().statusOf("0471-77") == "geplant extern");
+    {
+      service::DeviceFilter all;
+      all.showClosed = true; // offline Reader Control shows all local services
+      SMOKE_CHECK(service::filterDevices(ctx.deviceRegistry, ctx.statusIndex(), all).size() == 2);
+    }
     SMOKE_CHECK(app::ExternModule().available(ctx));
     SMOKE_CHECK(!app::OrdersModule().available(ctx));
     ctx.selectDevice("0601-1234");
