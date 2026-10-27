@@ -103,8 +103,13 @@ void GeneralModule::drawMenu(AppContext &ctx) {
   }
   if (ImGui::MenuItem("Log-Datei öffnen"))
     platform::openPath(ctx.workingDir() / "run.log");
-  if (ImGui::MenuItem("Anleitung öffnen"))
-    platform::openPath(platform::executableDir() / "Anleitung.pdf");
+  if (ImGui::BeginMenu ("Anleitungen")) {
+		if (ImGui::MenuItem("Anleitung öffnen"))
+			platform::openPath(platform::executableDir() / "Anleitung.pdf");
+		if (ImGui::MenuItem("Anleitung-Extern öffnen"))
+			platform::openPath(platform::executableDir() / "Anleitung-Extern.pdf");
+    ImGui::EndMenu();
+  }
 }
 
 } // namespace st::app

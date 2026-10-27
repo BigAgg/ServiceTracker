@@ -160,7 +160,6 @@ void ExternModule::drawWindow(AppContext &ctx) {
     }
     ImGui::SetItemTooltip("Techniker ist beim Kunden");
   }
-  ImGui::SameLine();
   const bool localCopy = device && ctx.services().hasLocalCopy(*device);
   {
     ui::Disabled d(!externalActive || !online || localCopy || !ctx.deviceRegistry.hasAccess());
@@ -184,7 +183,6 @@ void ExternModule::drawWindow(AppContext &ctx) {
     if (ImGui::Button("Lokalen Ordner öffnen") && device)
       platform::openPath(ctx.services().externCopyFor(*device));
   }
-  ImGui::SameLine();
   if (ui::confirmButton("Aus Liste entfernen", "Externen Service wirklich entfernen?\nDie lokale Kopie bleibt erhalten.", !externalActive || !online) && device) {
     if (ctx.notify.check(ctx.services().cancelExternService(*device), "Entfernen")) {
       auto updated = record;

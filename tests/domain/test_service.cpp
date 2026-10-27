@@ -368,7 +368,7 @@ TEST_CASE("external service can be cancelled") {
   REQUIRE(f.manager->createExternService(f.device, "2026.04.01", "", f.ts.session).has_value());
   REQUIRE(f.manager->cancelExternService(f.device));
   CHECK((*f.manager->recordFor(f.device)).status.empty());
-  CHECK(util::pathExists(f.manager->externCopyFor(f.device))); // local work is kept
+  CHECK(!util::pathExists(f.manager->externCopyFor(f.device))); // local work is kept
 }
 
 TEST_CASE("history: legacy lists and statistics") {

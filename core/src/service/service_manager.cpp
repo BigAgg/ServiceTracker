@@ -280,8 +280,13 @@ util::Result<ServiceRecord> ServiceManager::setAdditionalInfo(const devices::Dev
 }
 
 util::Status ServiceManager::removeFromList(const devices::Device &device) {
-  if (auto s = mEnv.syncStore.remove(device.name); !s)
+  auto s = mEnv.syncStore.remove(device.name);
+  auto s1 = mEnv.externStore.remove(device.name);
+  if (!s && !s1)
     return s;
+	const fs::path localCopy = externCopyFor(device);
+	if (auto s = st::util::removeAll(localCopy); !s)
+		log::warning("Lokale Kopie konnte nicht gelöscht werden: {}", s.error().message);
   log::info("{} aus der Liste entfernt", device.name);
   return {};
 }

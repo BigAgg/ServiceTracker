@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(ServiceTracker
-    VERSION 2.0.2
+    VERSION 2.0.3
     DESCRIPTION "Service- und Bestellverwaltung fuer Geraete"
     LANGUAGES C CXX
 )
