@@ -284,9 +284,9 @@ util::Status ServiceManager::removeFromList(const devices::Device &device) {
   auto s1 = mEnv.externStore.remove(device.name);
   if (!s && !s1)
     return s;
-	const fs::path localCopy = externCopyFor(device);
-	if (auto s = st::util::removeAll(localCopy); !s)
-		log::warning("Lokale Kopie konnte nicht gelöscht werden: {}", s.error().message);
+  const fs::path localCopy = externCopyFor(device);
+  if (auto removed = st::util::removeAll(localCopy); !removed)
+    log::warning("Lokale Kopie konnte nicht gelöscht werden: {}", removed.error().message);
   log::info("{} aus der Liste entfernt", device.name);
   return {};
 }
