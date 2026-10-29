@@ -87,6 +87,7 @@ Section sectionFromJson(const json &j) {
   section.postAction = normalizePostAction(str(j, "postAction"));
   section.postActionArgs = str(j, "postActionArgs");
   section.permissions = strings(j, "permissions");
+  section.emailExport = boolean(j, "emailExport", true);
   if (j.contains("postPopup") && j["postPopup"].is_object()) {
     const auto &p = j["postPopup"];
     section.postPopup = {str(p, "title"), str(p, "header"), str(p, "text")};
@@ -181,6 +182,7 @@ json toJson(const Section &section) {
   j["postAction"] = section.postAction;
   j["postActionArgs"] = section.postActionArgs;
   j["postPopup"] = {{"title", section.postPopup.title}, {"header", section.postPopup.header}, {"text", section.postPopup.text}};
+  j["emailExport"] = section.emailExport;
   j["items"] = json::array();
   for (const auto &item : section.items) {
     std::visit([&](const auto &value) {

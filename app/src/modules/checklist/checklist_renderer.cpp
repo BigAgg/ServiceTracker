@@ -142,6 +142,8 @@ void ChecklistRenderer::drawSection(Section &section, std::size_t index) {
   std::string label = section.name + "   [" + std::to_string(done) + "/" + std::to_string(total) + "]";
   if (section.finished)
     label += "   Abgeschlossen von " + section.user + " am " + mCtx.displayTime(section.timestamp);
+  if (mEdit && !section.emailExport)
+    label += "   [nicht im E-Mail-Export]";
   label += "###section" + std::to_string(index);
 
   if (mState.expandAll)
@@ -296,6 +298,11 @@ void ChecklistRenderer::drawSectionEditor(Section &section, std::size_t index) {
 
   ImGui::SeparatorText("Berechtigungen");
   drawPermissionEditor(section.permissions);
+
+  ImGui::SeparatorText("Export");
+  if (ImGui::Checkbox("Im E-Mail-Export anzeigen", &section.emailExport))
+    changed(false);
+  ImGui::SetItemTooltip("Erscheint im übersetzten Record, den \"E-Mail erstellen\" anhängt.\nInterne Arbeitsgänge (z. B. Preisliste) hier abwählen.");
 
   ImGui::SeparatorText("Hinweis nach dem Fertigmelden");
   bool popupChanged = ImGui::InputText("Titel", &section.postPopup.title);

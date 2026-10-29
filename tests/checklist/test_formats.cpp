@@ -197,3 +197,30 @@ TEST_CASE("format detection by extension") {
   CHECK(formatForPath("a/Checklist.JSON") == Format::Json);
   CHECK(formatForPath("a/Checklist.txt") == Format::LegacyText);
 }
+
+TEST_CASE("e-mail export flag of a section") {
+  SUBCASE("files without the flag allow the e-mail export") {
+    CHECK(loadFixture().sections.at(0).emailExport);
+    auto c = parseJson(R"({"sections":[{"name":"A","items":[]}]})");
+    REQUIRE(c.has_value());
+    CHECK(c->sections.at(0).emailExport);
+  }
+  SUBCASE("legacy text: only a disabled flag is written and read back") {
+    Checklist c = loadFixture();
+    CHECK(writeLegacyText(c).find("EMAIL_EXPORT") == std::string::npos);
+    c.sections.at(1).emailExport = false;
+    const auto text = writeLegacyText(c);
+    CHECK(text.find("EMAIL_EXPORT=0\n") != std::string::npos);
+    const auto parsed = parseLegacyText(text);
+    CHECK(parsed.sections.at(0).emailExport);
+    CHECK_FALSE(parsed.sections.at(1).emailExport);
+  }
+  SUBCASE("json round trip") {
+    Checklist c = loadFixture();
+    c.sections.at(0).emailExport = false;
+    auto parsed = parseJson(writeJson(c, "Y:/x/attachments/", 1));
+    REQUIRE(parsed.has_value());
+    CHECK_FALSE(parsed->sections.at(0).emailExport);
+    CHECK(*parsed == c);
+  }
+}

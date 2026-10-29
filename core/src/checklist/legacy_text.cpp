@@ -202,6 +202,8 @@ Section readSection(Reader &reader) {
       section.postPopup.text = reader.readBlock("POSTPOPUP_TEXT_END");
     } else if (line == "PERMISSIONS_START") {
       section.permissions = reader.readLines("PERMISSIONS_END");
+    } else if (startsWith(line, "EMAIL_EXPORT=")) {
+      section.emailExport = parseInt(valueOf(line)).value_or(1) != 0;
     } else if (line == "CHECKLINE_START") {
       section.items.emplace_back(readGroup(reader));
     } else if (line == "CHECKINFO_START") {
@@ -387,6 +389,9 @@ std::string writeLegacyText(const Checklist &checklist) {
       out << "POST_ACTIONARGS=" << singleLine(section.postActionArgs) << '\n';
     if (!section.permissions.empty())
       writePermissions(out, section.permissions);
+    // only written when it differs from the default, so legacy files stay byte identical
+    if (!section.emailExport)
+      out << "EMAIL_EXPORT=0\n";
     for (const auto &item : section.items) {
       std::visit([&](const auto &value) {
         using T = std::decay_t<decltype(value)>;

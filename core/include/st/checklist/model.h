@@ -130,6 +130,8 @@ struct Section {
   std::string postAction;
   std::string postActionArgs;
   Popup postPopup;
+  /// Section may appear in the record attached by "E-Mail erstellen".
+  bool emailExport = true;
 
   bool operator==(const Section &) const = default;
 };
