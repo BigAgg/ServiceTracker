@@ -127,4 +127,8 @@ bool alignTableRows(TaskTable &table) {
   return changed;
 }
 
+std::string tableLayoutKey(const TaskTable &table) {
+  return "st.checklist.table/" + table.name + "/" + std::to_string(table.templateRow.tasks.size());
+}
+
 } // namespace st::checklist

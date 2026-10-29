@@ -115,6 +115,12 @@ void ConfigsModule::init(AppContext &ctx) {
       mOpen = true;
     if (ImGui::MenuItem("Status-Benachrichtigungen..."))
       ctx.events.publish(events::ShowStatusAlertsEditor{});
+    if (ImGui::MenuItem("E-Mail-Vorlage..."))
+      ctx.events.publish(events::ShowMailTemplateEditor{});
+    const auto translations = util::pathFromUtf8(ctx.paths().translationsFile);
+    if (ImGui::MenuItem("Übersetzungsdatei öffnen", nullptr, false, util::pathExists(translations)))
+      platform::openPath(translations);
+    ImGui::SetItemTooltip("Gespeicherte Übersetzungen deutsch -> englisch.\nKorrekturen hier werden bei der nächsten Übersetzung verwendet.");
     if (ImGui::MenuItem("configs.json neu laden"))
       ctx.notify.check(ctx.configStore.load(), "configs.json");
     if (ImGui::MenuItem("Ordner öffnen"))

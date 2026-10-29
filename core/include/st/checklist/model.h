@@ -186,4 +186,9 @@ double totalHours(const Checklist &checklist);
 /// anything was changed.
 bool alignTableRows(TaskTable &table);
 
+/// Key under which the column layout (widths, order) of a table is remembered in the
+/// user's imgui.ini. Only the table name and the column count matter, so every
+/// checklist with a table of that name shares one entry.
+std::string tableLayoutKey(const TaskTable &table);
+
 } // namespace st::checklist

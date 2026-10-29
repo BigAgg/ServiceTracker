@@ -16,9 +16,10 @@ namespace st::exporting {
 
 /// Command line arguments (without the executable) that print `html` to `pdf` with
 /// Edge/Chrome. The browser's own header/footer is switched off; the record brings its
-/// own (HtmlOptions::pageHeaderFooter). `profileDir` keeps the headless instance apart
-/// from a browser the user has open.
-std::vector<std::string> browserPrintArguments(const util::fs::path &html, const util::fs::path &pdf, const util::fs::path &profileDir);
+/// own (HtmlOptions::pageHeaderFooter). Headless mode runs with a temporary profile,
+/// apart from a browser window the user has open. No --user-data-dir: with a fresh
+/// profile folder Chromium keeps running and never writes the PDF.
+std::vector<std::string> browserPrintArguments(const util::fs::path &html, const util::fs::path &pdf);
 
 /// "file:///C:/a%20b/x.html" – percent encoded, forward slashes.
 std::string fileUrl(const util::fs::path &path);
@@ -26,9 +27,10 @@ std::string fileUrl(const util::fs::path &path);
 /// Quotes one argument for a Windows command line (CommandLineToArgvW rules).
 std::string quoteWindowsArgument(std::string_view argument);
 
-/// Possible locations of msedge.exe below the given program folders
-/// (e.g. %ProgramFiles(x86)%, %ProgramFiles%, %LocalAppData%).
-std::vector<util::fs::path> edgeCandidates(const std::vector<util::fs::path> &programDirs);
+/// Possible browser executables below the given program folders (e.g.
+/// %ProgramFiles(x86)%, %ProgramFiles%, %LocalAppData%): all msedge.exe first, then
+/// chrome.exe as fallback.
+std::vector<util::fs::path> browserCandidates(const std::vector<util::fs::path> &programDirs);
 
 /// Prints an HTML file into a PDF file.
 using PdfPrinter = std::function<util::Status(const util::fs::path &html, const util::fs::path &pdf)>;
@@ -37,7 +39,8 @@ struct RecordRequest {
   /// Sections to print (already selected, e.g. recordSubset/emailSubset).
   checklist::Checklist checklist;
   checklist::HtmlOptions html;
-  /// Output path without extension; ".html" / ".pdf" is appended.
+  /// Output path without extension; ".html" / ".pdf" is appended. Old files are
+  /// replaced; if one is still open (locked), " (2)", " (3)" ... is appended.
   util::fs::path outputBase;
   bool translate = false;
   bool pdf = true;

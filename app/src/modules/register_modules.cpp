@@ -8,6 +8,7 @@
 #include "modules/general/general_module.h"
 #include "modules/history/history_module.h"
 #include "modules/orders/orders_module.h"
+#include "modules/records/records_module.h"
 #include "modules/service/service_module.h"
 #include "modules/statusalerts/statusalerts_module.h"
 #include "modules/users/users_module.h"
@@ -30,6 +31,7 @@ void registerModules(ModuleRegistry &registry) {
   registry.add<UsersModule>();
   registry.add<ChangesModule>();
   registry.add<StatusAlertsModule>();
+  registry.add<RecordsModule>();
 }
 
 } // namespace st::app

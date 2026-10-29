@@ -40,12 +40,12 @@ public:
 } // namespace
 
 TEST_CASE("record: browser command line") {
-  const auto args = browserPrintArguments("C:/Temp/a b/R.html", "C:/Temp/a b/R.pdf", "C:/Temp/profile");
+  const auto args = browserPrintArguments("C:/Temp/a b/R.html", "C:/Temp/a b/R.pdf");
   CHECK(std::find(args.begin(), args.end(), "--headless") != args.end());
   CHECK(std::find(args.begin(), args.end(), "--no-pdf-header-footer") != args.end());
   CHECK(args.back() == "file:///C:/Temp/a%20b/R.html");
   CHECK(std::any_of(args.begin(), args.end(), [](const std::string &a) { return a.starts_with("--print-to-pdf="); }));
-  CHECK(std::any_of(args.begin(), args.end(), [](const std::string &a) { return a.starts_with("--user-data-dir="); }));
+  CHECK(std::none_of(args.begin(), args.end(), [](const std::string &a) { return a.starts_with("--user-data-dir="); }));
 
   CHECK(fileUrl("/tmp/Gerät.html") == "file:///tmp/Ger%C3%A4t.html");
   CHECK(fileUrl("C:\\x\\y.html") == "file:///C:/x/y.html");
@@ -57,9 +57,11 @@ TEST_CASE("record: browser command line") {
   CHECK(quoteWindowsArgument("C:\\a b\\") == "\"C:\\a b\\\\\"");
   CHECK(quoteWindowsArgument("say \"hi\"") == "\"say \\\"hi\\\"\"");
 
-  const auto candidates = edgeCandidates({"C:/Program Files (x86)", ""});
-  REQUIRE(candidates.size() == 1);
+  const auto candidates = browserCandidates({"C:/Program Files (x86)", "", "C:/Program Files"});
+  REQUIRE(candidates.size() == 4);
   CHECK(util::pathToUtf8(candidates[0].filename()) == "msedge.exe");
+  CHECK(util::pathToUtf8(candidates[1].filename()) == "msedge.exe");
+  CHECK(util::pathToUtf8(candidates[2].filename()) == "chrome.exe");
 }
 
 TEST_CASE("record: pdf, translation and fallbacks") {

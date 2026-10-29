@@ -219,3 +219,18 @@ TEST_CASE("e-mail subset: finished sections that are allowed, in checklist order
   c.sections[1].finished = false;
   CHECK(emailSubset(c).sections.size() == c.sections.size() - 2);
 }
+
+TEST_CASE("table layout key depends on name and column count only") {
+  TaskTable a;
+  a.name = "Preisliste";
+  a.templateRow.tasks = {Task::make("Teil", Text{}), Task::make("Preis", 0.0)};
+  TaskTable b = a;
+  b.rows.push_back(a.templateRow);
+  b.timestamp = "2026-01-01 00:00:00";
+  CHECK(tableLayoutKey(a) == tableLayoutKey(b));
+  b.templateRow.tasks.push_back(Task::make("Menge", 0));
+  CHECK(tableLayoutKey(a) != tableLayoutKey(b));
+  b = a;
+  b.name = "Teile";
+  CHECK(tableLayoutKey(a) != tableLayoutKey(b));
+}

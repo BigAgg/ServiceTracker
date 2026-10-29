@@ -18,6 +18,7 @@
 #include "modules/general/general_module.h"
 #include "modules/history/history_module.h"
 #include "modules/orders/orders_module.h"
+#include "modules/records/records_module.h"
 #include "modules/service/service_module.h"
 #include "modules/statusalerts/statusalerts_module.h"
 #include "modules/users/users_module.h"
@@ -26,6 +27,8 @@
 #include <st/checklist/actions.h>
 #include <st/checklist/document.h>
 #include <st/checklist/formats.h>
+#include <st/checklist/translation.h>
+#include <st/exporting/mail.h>
 #include <st/orders/order_store.h>
 #include <st/service/history.h>
 #include <st/users/user_store.h>
@@ -150,6 +153,7 @@ int main() {
   settings.paths.externFile = util::pathToUtf8(sync / "extern.json");
   settings.paths.ordersFile = util::pathToUtf8(root / "orders.json");
   settings.paths.crashDir = util::pathToUtf8(root / "crashes");
+  settings.paths.translationsFile = util::pathToUtf8(configs / "translations_de-en.json");
   settings.autosaveDelayMs = 1;
   settings.refreshIntervalMs = 200;
 
@@ -187,8 +191,9 @@ int main() {
     auto &usersModule = modules.add<app::UsersModule>();
     auto &changesModule = modules.add<app::ChangesModule>();
     modules.add<app::StatusAlertsModule>();
+    auto &recordsModule = modules.add<app::RecordsModule>();
     modules.initAll(ctx);
-    SMOKE_CHECK(modules.activeModules().size() == 11);
+    SMOKE_CHECK(modules.activeModules().size() == 12);
 
     const auto frames = [&](int count) {
       for (int i = 0; i < count; ++i) {
@@ -422,6 +427,90 @@ int main() {
       ctx.checklist().markDirty();
       frames(5);
       sweep("checklist");
+    }
+
+    std::puts("frames: record dialog, record and e-mail");
+    if (ctx.checklist().isOpen()) {
+      ctx.events.publish(app::events::ShowRecordDialog{});
+      frames(3);
+      SMOKE_CHECK(ImGui::GetTopMostPopupModal() != nullptr);
+      sweep("record dialog");
+      io.AddKeyEvent(ImGuiKey_Escape, true);
+      frames(1);
+      io.AddKeyEvent(ImGuiKey_Escape, false);
+      frames(2);
+      SMOKE_CHECK(ImGui::GetTopMostPopupModal() == nullptr);
+
+      // Record (German): no browser on Linux -> HTML with a warning, opened afterwards
+      const auto exportDir = fs::temp_directory_path() / "ServiceTracker";
+      recordsModule.createRecord(ctx, {"Wareneingang"}, false, true);
+      SMOKE_CHECK(recordsModule.busy());
+      frames(2); // progress overlay
+      recordsModule.finishPendingJob(ctx);
+      frames(2);
+      const auto stem = util::pathToUtf8(ctx.checklist().doc->path().stem());
+      SMOKE_CHECK(fs::exists(exportDir / (stem + "_ServiceRecord.html")));
+
+      // E-mail: all lines are in the shared translation file (no server in CI)
+      {
+        struct Prefix final : translate::Backend {
+          util::Result<std::vector<std::string>> translate(const std::vector<std::string> &texts) override {
+            std::vector<std::string> out;
+            for (const auto &t : texts)
+              out.push_back("EN " + t);
+            return out;
+          }
+        } backend;
+        translate::TranslationCache cache(configs / "translations_de-en.json");
+        translate::Translator translator(cache, &backend);
+        auto copy = checklist::emailSubset(ctx.checklist().doc->data());
+        SMOKE_CHECK(checklist::translateChecklist(copy, translator).has_value());
+      }
+      const auto serviceFolder = ctx.activeDevice()->path / ctx.selectedService();
+      write(serviceFolder / "EV-Plate" / "0601-1234 Reader Evaluation.pdf", "%PDF-1.7");
+      SMOKE_CHECK(exporting::findReaderEvaluation(serviceFolder).has_value());
+      ctx.events.publish(app::events::CreateServiceMail{});
+      frames(2);
+      recordsModule.finishPendingJob(ctx);
+      frames(2);
+      const auto date = service::ServiceManager::serviceDate(ctx.selectedService());
+      const auto mailRecord = exportDir / ("0601-1234_Service_Report_" + date + ".html");
+      SMOKE_CHECK(fs::exists(mailRecord));
+      const std::string html = util::readFile(mailRecord).value_or("");
+      SMOKE_CHECK(html.find("EN Wareneingang") != std::string::npos);
+      SMOKE_CHECK(html.find("smoketest") == std::string::npos); // no names
+      SMOKE_CHECK(html.find("Total Time") == std::string::npos); // no working times
+
+      // E-mail template editor (menu "Configs")
+      ctx.events.publish(app::events::ShowMailTemplateEditor{});
+      frames(3);
+      SMOKE_CHECK(ImGui::FindWindowByName("E-Mail-Vorlage") != nullptr);
+      sweep("mail template editor");
+    }
+
+    std::puts("frames: table layout saved by table name");
+    if (ctx.checklist().isOpen()) {
+      const auto &prices = std::get<checklist::TaskTable>(ctx.checklist().doc->data().sections[1].items[0]);
+      const ImGuiID saved = ImHashStr("##table", 0, ImHashStr(checklist::tableLayoutKey(prices).c_str()));
+      const auto drawTables = [&] {
+        app::ChecklistViewState state;
+        state.expandAll = true;
+        for (int i = 0; i < 3; ++i) {
+          ImGui::NewFrame();
+          ImGui::Begin("Smoke Tabellen");
+          app::ChecklistRenderer renderer(ctx, *ctx.checklist().doc, state, false, [](bool) {});
+          renderer.drawSections();
+          ImGui::End();
+          ImGui::Render();
+        }
+      };
+      ctx.prefs().saveTableLayout = false;
+      drawTables();
+      SMOKE_CHECK(ImGui::TableFindByID(saved) == nullptr);
+      ctx.prefs().saveTableLayout = true;
+      drawTables();
+      SMOKE_CHECK(ImGui::TableFindByID(saved) != nullptr);
+      ctx.prefs().saveTableLayout = false;
     }
 
     std::puts("frames: dialogs");

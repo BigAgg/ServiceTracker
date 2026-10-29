@@ -30,7 +30,6 @@ private:
   void drawWorkWindow(AppContext &ctx);
   void drawEditorWindow(AppContext &ctx);
   void drawToolbar(AppContext &ctx, checklist::ChecklistDocument &doc, bool editor);
-  void drawRecordPopup(AppContext &ctx);
   void updateAttention(AppContext &ctx);
   /// External service: two-way sync of the local checklist with the server copy.
   void syncMirror(AppContext &ctx);
@@ -45,8 +44,8 @@ private:
   bool mTemplateDirty = false;
   std::string mNewSectionName;
 
-  // "Record erstellen": section name + selected
-  std::vector<std::pair<std::string, bool>> mRecordSelection;
+  /// A record/e-mail export is running (RecordsModule) – export buttons disabled.
+  bool mExportRunning = false;
 };
 
 } // namespace st::app

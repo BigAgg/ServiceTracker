@@ -32,6 +32,7 @@ void ChecklistModule::init(AppContext &ctx) {
     ctx.ui.addWindow(kEditorWindow, [this, &ctx] { drawEditorWindow(ctx); }, true, ImGuiWindowFlags_HorizontalScrollbar);
   ctx.events.subscribe<events::ServiceSelected>([this, &ctx](const auto &) { open(ctx); });
   ctx.events.subscribe<events::SaveChecklistRequest>([this, &ctx](const auto &) { saveNow(ctx); });
+  ctx.events.subscribe<events::RecordExportState>([this](const events::RecordExportState &e) { mExportRunning = e.running; });
 }
 
 void ChecklistModule::open(AppContext &ctx) {
@@ -44,7 +45,6 @@ void ChecklistModule::open(AppContext &ctx) {
   session.dirty = false;
   session.lastError.clear();
   mWorkState = {};
-  mRecordSelection.clear();
 
   auto *device = ctx.activeDevice();
   const std::string &service = ctx.selectedService();
@@ -171,8 +171,26 @@ void ChecklistModule::drawToolbar(AppContext &ctx, checklist::ChecklistDocument 
 
   if (!editor) {
     ImGui::SameLine();
-    if (ImGui::Button("Record erstellen"))
-      ImGui::OpenPopup("Record erstellen");
+    {
+      ui::Disabled d(mExportRunning);
+      if (ImGui::Button("Record erstellen")) {
+        if (session.dirty)
+          saveNow(ctx);
+        ctx.events.publish(events::ShowRecordDialog{});
+      }
+      ImGui::SetItemTooltip("Fertig gemeldete Arbeitsgänge als PDF (wahlweise englisch)");
+      ImGui::SameLine();
+      const bool mailable = std::any_of(doc.data().sections.begin(), doc.data().sections.end(),
+                                        [](const checklist::Section &s) { return s.finished && s.emailExport; });
+      ui::Disabled noSections(!mailable);
+      if (ImGui::Button("E-Mail erstellen")) {
+        if (session.dirty)
+          saveNow(ctx);
+        ctx.events.publish(events::CreateServiceMail{});
+      }
+      ImGui::SetItemTooltip(mailable ? "Englischer Record (ohne Zeiten und Namen) und \"Reader Evaluation\" aus EV-Plate\nals Outlook-Entwurf nach der E-Mail-Vorlage"
+                                     : "Noch kein fertig gemeldeter Arbeitsgang ist für den E-Mail-Export freigegeben");
+    }
     ImGui::SameLine();
     if (ImGui::SmallButton("Alle auf"))
       mWorkState.expandAll = true;
@@ -220,68 +238,6 @@ void ChecklistModule::drawWorkWindow(AppContext &ctx) {
       saveNow(ctx);
   });
   renderer.drawSections();
-  drawRecordPopup(ctx);
-}
-
-void ChecklistModule::drawRecordPopup(AppContext &ctx) {
-  auto &session = ctx.checklist();
-  if (!session.doc)
-    return;
-  if (!ImGui::BeginPopupModal("Record erstellen", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    return;
-  // keep the chosen order, add newly finished sections at the end
-  for (const auto &section : session.doc->data().sections) {
-    if (!section.finished)
-      continue;
-    const bool known = std::any_of(mRecordSelection.begin(), mRecordSelection.end(), [&](const auto &p) { return p.first == section.name; });
-    if (!known)
-      mRecordSelection.emplace_back(section.name, true);
-  }
-  ImGui::TextUnformatted("Welche Arbeitsgänge sollen ausgedruckt werden?");
-  if (ImGui::Button("Alle"))
-    for (auto &[name, active] : mRecordSelection)
-      active = true;
-  ImGui::SameLine();
-  if (ImGui::Button("Keine"))
-    for (auto &[name, active] : mRecordSelection)
-      active = false;
-  if (mRecordSelection.empty())
-    ui::hintText("Es gibt noch keine fertig gemeldeten Arbeitsgänge.");
-  for (std::size_t i = 0; i < mRecordSelection.size(); ++i) {
-    ui::ScopedId id(static_cast<int>(i));
-    {
-      ui::Disabled d(i + 1 >= mRecordSelection.size());
-      if (ImGui::ArrowButton("##down", ImGuiDir_Down))
-        std::swap(mRecordSelection[i], mRecordSelection[i + 1]);
-    }
-    ImGui::SameLine();
-    {
-      ui::Disabled d(i == 0);
-      if (ImGui::ArrowButton("##up", ImGuiDir_Up))
-        std::swap(mRecordSelection[i], mRecordSelection[i - 1]);
-    }
-    ImGui::SameLine();
-    ImGui::Checkbox(mRecordSelection[i].first.c_str(), &mRecordSelection[i].second);
-  }
-  ImGui::Separator();
-  if (ImGui::Button("Record erstellen")) {
-    std::vector<std::string> names;
-    for (const auto &[name, active] : mRecordSelection)
-      if (active)
-        names.push_back(name);
-    auto options = ServiceModule::htmlOptions(ctx);
-    const auto stem = util::pathToUtf8(session.doc->path().stem());
-    options.documentName = stem + "_ServiceRecord.html";
-    const auto file = util::fs::temp_directory_path() / "ServiceTracker" / util::pathFromUtf8(options.documentName);
-    const auto html = checklist::exportHtml(checklist::recordSubset(session.doc->data(), names), options);
-    if (ctx.notify.check(util::writeFileAtomic(file, html), "Record erstellen"))
-      platform::openPath(file);
-    ImGui::CloseCurrentPopup();
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Abbrechen") || ImGui::IsKeyPressed(ImGuiKey_Escape))
-    ImGui::CloseCurrentPopup();
-  ImGui::EndPopup();
 }
 
 void ChecklistModule::drawEditorWindow(AppContext &ctx) {

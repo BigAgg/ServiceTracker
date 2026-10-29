@@ -22,6 +22,8 @@ struct Preferences {
   bool showClosedDevices = false;
   /// Orders are opened as popup instead of inline tree nodes.
   bool ordersAsPopup = false;
+  /// Remember column widths/order of checklist tables (per table name, in imgui.ini).
+  bool saveTableLayout = false;
   /// Show Windows notifications (otherwise only messages inside the program).
   bool desktopNotifications = true;
   /// Windows notifications stay on screen until clicked or closed.

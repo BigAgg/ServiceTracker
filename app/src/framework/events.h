@@ -37,6 +37,20 @@ struct AlertActivated {
 /// Open the editor of the status notifications (menu "Configs").
 struct ShowStatusAlertsEditor {};
 
+/// Open the editor of the e-mail template for "E-Mail erstellen" (menu "Configs").
+struct ShowMailTemplateEditor {};
+
+/// "Record erstellen" in the checklist toolbar: open the record dialog.
+struct ShowRecordDialog {};
+
+/// "E-Mail erstellen" in the checklist toolbar: English record + Outlook draft.
+struct CreateServiceMail {};
+
+/// A record/e-mail export started or finished (buttons are disabled meanwhile).
+struct RecordExportState {
+  bool running = false;
+};
+
 /// The device list was rescanned.
 struct DevicesRescanned {};
 

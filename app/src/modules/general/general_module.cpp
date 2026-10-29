@@ -58,7 +58,9 @@ void GeneralModule::drawMenu(AppContext &ctx) {
   ImGui::SeparatorText("Checkliste");
   changed |= ImGui::Checkbox("Nur Arbeitsgänge mit Berechtigungen anzeigen", &prefs.onlyPermittedSections);
   changed |= ImGui::Checkbox("Deutsches Zeitformat", &prefs.germanDates);
-  if (ctx.isPoweruser()) {
+  changed |= ImGui::Checkbox("Tabellenformatierung speichern", &prefs.saveTableLayout);
+  ui::help("Spaltenbreiten und -reihenfolge von Checklisten-Tabellen werden gemerkt.\n"
+           "Gilt für alle Tabellen mit gleichem Namen (und gleicher Spaltenzahl), in jeder Checkliste.");  if (ctx.isPoweruser()) {
     changed |= ImGui::Checkbox("Fertiggemeldet ignorieren", &prefs.ignoreFinished);
     ui::help("Fertig gemeldete Arbeitsgänge bleiben bearbeitbar.");
     changed |= ImGui::Checkbox("Berechtigungen ignorieren", &prefs.ignorePermissions);

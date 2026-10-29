@@ -10,6 +10,7 @@
 #include <app/app.h>
 #include <imgui.h>
 #include <imgui/ImGui_helpers.h>
+#include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <algorithm>
@@ -710,9 +711,18 @@ void ChecklistRenderer::drawTable(TaskTable &table) {
   }
 
   const int columnCount = static_cast<int>(columns.size()) + 1;
-  const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_SizingStretchProp;
-  if (!ImGui::BeginTable("##table", columnCount, flags))
+  // Saved layouts are keyed by the table name only (not by checklist/section), so the
+  // ID stack is replaced for the table; the editor never saves layouts.
+  const bool persistLayout = !mEdit && mCtx.prefs().saveTableLayout;
+  ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp;
+  flags |= persistLayout ? ImGuiTableFlags_Reorderable : ImGuiTableFlags_NoSavedSettings;
+  if (persistLayout)
+    ImGui::PushOverrideID(ImHashStr(tableLayoutKey(table).c_str()));
+  if (!ImGui::BeginTable("##table", columnCount, flags)) {
+    if (persistLayout)
+      ImGui::PopID();
     return;
+  }
   ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, mEdit ? 110.0f : 60.0f);
   for (const auto &column : columns)
     ImGui::TableSetupColumn(column.name.c_str());
@@ -751,6 +761,8 @@ void ChecklistRenderer::drawTable(TaskTable &table) {
     }
   }
   ImGui::EndTable();
+  if (persistLayout)
+    ImGui::PopID();
   if (rowOp.apply(table.rows)) {
     table.timestamp = mCtx.session().timestamp();
     changed(false);

@@ -34,6 +34,7 @@ Preferences loadPreferences(const util::fs::path &file, const util::fs::path &le
       prefs.ignorePermissions = util::json::boolean(*j, "ignorePermissions", prefs.ignorePermissions);
       prefs.showClosedDevices = util::json::boolean(*j, "showClosedDevices", prefs.showClosedDevices);
       prefs.ordersAsPopup = util::json::boolean(*j, "ordersAsPopup", prefs.ordersAsPopup);
+      prefs.saveTableLayout = util::json::boolean(*j, "saveTableLayout", prefs.saveTableLayout);
       prefs.desktopNotifications = util::json::boolean(*j, "desktopNotifications", prefs.desktopNotifications);
       prefs.persistentNotifications = util::json::boolean(*j, "persistentNotifications", prefs.persistentNotifications);
       prefs.taskbarBadge = util::json::boolean(*j, "taskbarBadge", prefs.taskbarBadge);
@@ -62,6 +63,7 @@ util::Status savePreferences(const util::fs::path &file, const Preferences &pref
   j["ignorePermissions"] = prefs.ignorePermissions;
   j["showClosedDevices"] = prefs.showClosedDevices;
   j["ordersAsPopup"] = prefs.ordersAsPopup;
+  j["saveTableLayout"] = prefs.saveTableLayout;
   j["desktopNotifications"] = prefs.desktopNotifications;
   j["persistentNotifications"] = prefs.persistentNotifications;
   j["taskbarBadge"] = prefs.taskbarBadge;
