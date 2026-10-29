@@ -20,13 +20,19 @@ Fenster: **Checkliste** (alle), **Checklisten Editor** (Poweruser).
 - Tabellen: „+ Zeile“, Enter in der letzten Zeile hängt eine Zeile an, „x“ löscht eine Zeile.
 - Arbeitsgang fertigmelden: füllt Expressions, listet offene Aufgaben zur Bestätigung,
   führt die Post-Action aus und zeigt ggf. den Hinweis-Dialog.
-- Record erstellen: wählbare, sortierbare Auswahl fertiger Arbeitsgänge als HTML.
+- **Record erstellen**: wählbare, sortierbare Auswahl fertiger Arbeitsgänge, wahlweise
+  englisch übersetzt, als PDF (Edge) oder HTML. **E-Mail erstellen**: englischer Record
+  ohne Zeiten/Namen + Reader Evaluation als Outlook-Entwurf. Beides siehe
+  [records.md](records.md).
+- Tabellen: Spaltenbreiten/-reihenfolge werden pro Tabellenname gemerkt, wenn
+  *Einstellungen → Tabellenformatierung speichern* an ist.
 
 ## Checklisten Editor
 - Bearbeitet die aktive Checkliste oder eine separat geladene **Vorlage**
   („Vorlage laden…“, „Neue Vorlage…“, „Aktive Checkliste bearbeiten“).
 - Arbeitsgänge: anlegen, verschieben, entfernen, bearbeiten (Name, Post-Action + Argumente,
-  Berechtigungen, Hinweis-Dialog).
+  Berechtigungen, **Im E-Mail-Export anzeigen**, Hinweis-Dialog). Arbeitsgänge ohne
+  E-Mail-Export tragen im Editor den Zusatz „[nicht im E-Mail-Export]“.
 - Elemente: Einzelaufgabe, Aufgabengruppe, Tabelle; verschieben/entfernen.
 - Aufgaben-Editor: Name, Tooltip, Typ (BOOL, INT, DOUBLE, STRING, TEXTBOX, COMBO,
   DATEPICKER), Expression, Standardwert, Format für Zahlen, Combo-Optionen.

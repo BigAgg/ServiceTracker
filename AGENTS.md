@@ -51,6 +51,9 @@ Wichtige Invarianten:
 - Zeitstempel immer über `util::Session` (testbar), Format `JJJJ-MM-TT hh:mm:ss`.
 - Pfade intern UTF-8, Umwandlung nur mit `util::pathFromUtf8`/`util::pathToUtf8`.
 - Netzlaufwerk nicht jedes Frame lesen – `PollTimer` in `update()`.
+- Lang laufende Arbeit (HTTP, externe Programme, Outlook) nie im UI-Thread:
+  `framework/background_job.h`, der Worker bekommt nur Kopien (nie `AppContext`).
+  Der Ablauf selbst gehört testbar in `core` (Vorbild `exporting::createRecord`).
 
 ## Skills
 

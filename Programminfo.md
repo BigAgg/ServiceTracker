@@ -17,6 +17,14 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
 - Service wird bearbeitet und danach abgeschlossen
 - Beim Abschließen wird das Gerät in einer Liste gepflegt um daten auszuwerten und diese in excel zu exportieren
 
+## Records und E-Mail:
+
+- "Record erstellen": ausgewählte, fertige Arbeitsgänge als PDF (Kopf- und Fußzeile mit Seitenzahlen), optional ins Englische übersetzt
+- "E-Mail erstellen": englischer Record ohne Bearbeitungszeiten und Namen als PDF, nur Arbeitsgänge mit "Im E-Mail-Export anzeigen"
+    - Outlook-Entwurf nach der E-Mail-Vorlage (Configs), Anhänge: Record und die PDF mit "Reader Evaluation" im Namen aus dem Unterordner "EV-Plate" des Service-Ordners (falls vorhanden)
+- Übersetzt wird mit einer lokalen LibreTranslate-Instanz; alle übersetzten Sätze stehen in einer gemeinsamen Übersetzungsdatei, Einträge dort (auch von Hand geändert) haben Vorrang
+- Optional (Einstellungen, Standard aus) werden Tabellenformatierungen der Checklisten pro Tabellenname in der imgui.ini gespeichert
+
 ## Workflow service extern:
 
 - Externer Service wird angelegt
@@ -38,23 +46,3 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
 - In den versand gestellt und datum eingetragen
 - Versendet und Rechnungsnummer sowie versanddatum werden eingetragen
 - Bestellung wird abgeschlossen
-
-## Neuimplementierungen:
-
-- Sectionen / arbeitsgänge in checklisten sollen die option bekommen, ob sie auf einem e-mail export auftauchen dürfen oder nicht.
-    - E-Mail export siehe unteren Punkt "Ein neuer Button "E-Mail erstellen""
-- Bei "Record erstellen" soll es eine option geben "In englisch übersetzen"
-    - Das Übersetzen soll mit einer lokalen instanz von libretranslate funktionieren
-    - falls möglich, soll der record direkt als pdf erstellt werden mit kopf und fußzeile mit seitenzahlen
-- Ein neuer Button "E-Mail erstellen"
-    - Der Button erstellt einen von deutsch auf englisch übersetzten record ohne die bearbeitungszeiten und ohne die namen der bearbeiter als pdf.
-    - Der Button öffnet per mailto: eine vordefinierte e-mail
-        - als anhang wird der zuvor erstellte record gesetzt und aus dem aktuellen Service odner (Service_yyyy.mm.dd) die PDF datei im Unterordner "EV-Plate". Dabei ist wichtig, dass im namen der Datei "Reader Evaluation" enthalten ist.
-        - Ist die Datei nicht vorhanden, wird sie einfach nicht mit angehangen.
-- Übersetzer vorgaben:
-    - Libretranslate lokal laufend
-    - Alle übersetzten sätze werden in einer cache datei für alle zugänglich gespeichert.
-        - Wenn der satz dort schon übersetzt wurde, nimm diese übersetzung. somit kann ich händisch änderungen vornehmen falls notwendig.
-- Tabellenformatierungen in Checklisten sollen in der ini file gespeichert werden.
-    - wichtig ist, dass nur der tabellenname übereinstimmen muss und die ini datei nicht für jede checkliste zugemüllt wird.
-    - Füge es als einstellung hinzu, ob tabelleninformationen gespeichert werden oder nicht mit default auf aus

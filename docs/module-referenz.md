@@ -21,6 +21,7 @@ Berechtigungsgruppen (Benutzerverwaltung): `SERVICE_CREATOR`, `SERVICE_CREATOR_E
 | [users](module/users.md) | Menü „Benutzer“ | Poweruser | Benutzer und Abteilungen |
 | [changes](module/changes.md) | Menü „Änderungen“ | alle | Änderungswünsche |
 | [statusalerts](module/statusalerts.md) | Configs → Status-Benachrichtigungen | alle / Poweruser | Windows-Benachrichtigung bei bestimmten Status |
+| [records](module/records.md) | Checkliste: Record erstellen, E-Mail erstellen; Configs → E-Mail-Vorlage | alle / Poweruser | Records (PDF, englisch), E-Mail mit Record und Reader Evaluation |
 
 Querschnittsthemen: [Benachrichtigungen](benachrichtigungen.md),
 [Dateiformate](dateiformate.md), [Konfiguration](konfiguration.md).

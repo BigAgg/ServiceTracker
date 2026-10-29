@@ -14,6 +14,8 @@ Projekt-Konfigurationen bearbeiten (`configs.json`). Dialog **Reader Configs** (
 - „Speichern“ schreibt `configs.json`; unbekannte Schlüssel bleiben erhalten.
 - Menüeintrag **Status-Benachrichtigungen...** öffnet den Editor der
   [Status-Benachrichtigungen](statusalerts.md).
+- Menüeintrag **E-Mail-Vorlage...** öffnet die Vorlage für „E-Mail erstellen“,
+  **Übersetzungsdatei öffnen** die gemeinsamen Übersetzungen (siehe [records.md](records.md)).
 
 **Dateien:** `configs.json` (neuer optionaler Schlüssel `filesExtern`, siehe
 [dateiformate.md](../dateiformate.md)).

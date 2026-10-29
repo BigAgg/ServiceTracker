@@ -21,6 +21,8 @@ Alle Dateien sind UTF-8. Geschrieben wird immer atomar (Temp-Datei + Umbenennen)
 | `style.txt` | `SYNC/` | optionaler HTML-Kopf für Records | `checklist/export.h` |
 | `configs.json` | `configs/` | Gerätekonfigurationen | `devices/device_config.h` |
 | `statusAlerts.json` | `configs/` | Status-Benachrichtigungen (neu): `[{"status", "groups"}]` | `alerts/status_rules.h` |
+| `mailTemplate.json` | `configs/` | E-Mail-Vorlage (neu): `{"to", "cc", "subject", "body"}` | `exporting/mail.h` |
+| `translations_de-en.json` | `configs/` | Übersetzungen (neu): `{"deutsch": "englisch"}`, von Hand editierbar | `translate/translator.h` |
 | `extern_local.json` | `extern/` (lokal) | externe Services mit lokaler Kopie (neu, Format wie `Sync.json`) | `service/records.h` |
 | `users_cache.bin` | Programmordner | eigener Eintrag aus `users.bin` für den Offline-Modus (neu, gleiches Format) | `users/user_store.h` |
 | `users.bin` | `ServiceCreatorApp/` | Benutzer + Rechte | `users/user_store.h` |
@@ -56,7 +58,7 @@ der Merge.
   "sections": [{
     "name": "Wareneingang", "time": 0.3, "user": "", "timestamp": "", "finished": false,
     "permissions": ["LAGER"], "postAction": "update_status_rinfo", "postActionArgs": "Technik",
-    "postPopup": {"title": "", "header": "", "text": ""},
+    "postPopup": {"title": "", "header": "", "text": ""}, "emailExport": true,
     "items": [
       {"kind": "info",  "data": {"name": "Verpackung ok", "type": "bool", "value": false, "comment": "",
                                   "attachments": [], "user": "", "timestamp": "", "expression": "",
@@ -72,6 +74,8 @@ der Merge.
 - `attachmentsDir` und `lastedit` sind informativ (werden nicht gelesen).
 - `enteradd`, `cfocus`, `rfocus` waren UI-Zustand in v1 und werden nur noch zur
   Kompatibilität geschrieben.
+- `emailExport` (neu): Arbeitsgang darf im Record von „E-Mail erstellen“ erscheinen. Fehlt
+  das Feld (v1, ältere Dateien), gilt `true`; v1 ignoriert es.
 - Gelesen werden auch v1-Varianten: fehlende `items`/`rows`, `"multiline": true` bei
   `string` (→ Textbox), Post-Action `resolve_rinfo` (→ `auto_finish`).
 
@@ -116,6 +120,9 @@ Unterschiede beim Schreiben gegenüber v1 (alle von v1 lesbar):
 - Zahlen werden verlustfrei geschrieben (v1: 6 signifikante Stellen).
 - Zeilenumbrüche in einzeiligen Feldern werden durch Leerzeichen ersetzt (v1 hat dadurch
   defekte Dateien erzeugt).
+- `EMAIL_EXPORT=0` im Arbeitsgang (nach den Berechtigungen) nur, wenn der Arbeitsgang nicht
+  im E-Mail-Export erscheinen soll – sonst bleibt die Datei byte-gleich zu v1. v1 ignoriert
+  die Zeile.
 
 Der Reader akzeptiert CRLF und ignoriert unbekannte Zeilen.
 

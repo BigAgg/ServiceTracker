@@ -4,6 +4,26 @@ Alle Änderungen am Programm, neueste zuerst. Jede Änderung wird hier mit einem
 für Anwender und einem Verweis auf die ausführliche Doku eingetragen. Der Vergleich mit
 Version 1 steht in [migration.md](migration.md).
 
+## 2026-10-29
+
+- **Record erstellen** ([module/records.md](module/records.md)): Option **„In englisch
+  übersetzen“** (LibreTranslate) und Erstellung direkt als **PDF** mit Kopf- und Fußzeile
+  und Seitenzahlen (über Microsoft Edge, ohne Edge weiterhin HTML). Läuft im Hintergrund.
+- **Neuer Button „E-Mail erstellen“** in der Checkliste: englischer Record (ohne
+  Bearbeitungszeiten und Namen) als PDF plus „Reader Evaluation“ aus `EV-Plate` als
+  Outlook-Entwurf. Empfänger, Betreff und Text pflegen Poweruser unter Configs →
+  **E-Mail-Vorlage** (`configs/mailTemplate.json`).
+- **Checklisten Editor**: je Arbeitsgang die Option **„Im E-Mail-Export anzeigen“**
+  (Standard an; abgewählte Arbeitsgänge sind im Editor markiert)
+  ([module/checklist.md](module/checklist.md)).
+- **Übersetzungsdatei** `configs/translations_de-en.json` für alle: bekannte Sätze werden
+  wiederverwendet, Korrekturen von Hand haben Vorrang (Configs → Übersetzungsdatei öffnen).
+- **Einstellungen → „Tabellenformatierung speichern“** (Standard aus): Spaltenbreiten und
+  -reihenfolge von Checklisten-Tabellen werden pro Tabellenname in `imgui.ini` gemerkt –
+  ein Eintrag für alle Checklisten mit dieser Tabelle.
+- **Konfiguration**: neue Schlüssel `paths.translationsFile`, `translator`,
+  `translatorTimeoutMs`, `pdfBrowser` ([konfiguration.md](konfiguration.md)).
+
 ## 2026-10-22 (Version 2.0.2)
 
 - **Externe Services offline**: jede lokale Kopie erscheint offline in Reader Control (auch
