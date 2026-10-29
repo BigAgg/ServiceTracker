@@ -110,15 +110,21 @@ void renderTask(std::ostringstream &out, const Task &task) {
       << "</th><td class='multiline'>" << htmlEscape(value) << "</td></tr></table></div>\n";
 }
 
-void renderSection(std::ostringstream &out, const Section &section) {
+void renderSection(std::ostringstream &out, const Section &section, bool hideWorkInfo) {
   out << "<div class='section'><div class='section-header'>";
   out << "<div class='section-title'>" << htmlEscape(section.name) << "</div>";
-  out << "<div class='section-meta'>⏱️ Time: " << std::format("{:.2f}", section.time) << " hours";
-  if (!section.user.empty())
-    out << " | 👤 " << htmlEscape(section.user);
-  if (!section.timestamp.empty())
-    out << " | 📅 " << htmlEscape(section.timestamp);
-  out << "</div></div><div class='section-content'>\n";
+  if (hideWorkInfo) {
+    if (section.timestamp.size() >= 10)
+      out << "<div class='section-meta'>📅 " << htmlEscape(section.timestamp.substr(0, 10)) << "</div>";
+  } else {
+    out << "<div class='section-meta'>⏱️ Time: " << std::format("{:.2f}", section.time) << " hours";
+    if (!section.user.empty())
+      out << " | 👤 " << htmlEscape(section.user);
+    if (!section.timestamp.empty())
+      out << " | 📅 " << htmlEscape(section.timestamp);
+    out << "</div>";
+  }
+  out << "</div><div class='section-content'>\n";
   for (const auto &item : section.items) {
     std::visit([&](const auto &value) {
       using T = std::decay_t<decltype(value)>;
@@ -132,6 +138,18 @@ void renderSection(std::ostringstream &out, const Section &section) {
                item);
   }
   out << "</div></div>\n";
+}
+
+/// Page margin boxes (CSS Paged Media); browsers without support simply ignore them.
+void renderPageBoxes(std::ostringstream &out, const HtmlOptions &options) {
+  out << "<style>\n@page { size: A4; margin: 20mm 15mm 18mm 15mm;\n"
+      << "  @top-left { content: " << cssString(options.documentName) << "; font: 8pt 'Segoe UI', Arial, sans-serif; color: #666; }\n"
+      << "  @top-right { content: " << cssString(options.title) << "; font: 8pt 'Segoe UI', Arial, sans-serif; color: #666; }\n"
+      << "  @bottom-left { content: " << cssString(options.footer) << "; font: 7.5pt 'Segoe UI', Arial, sans-serif; color: #666; }\n"
+      << "  @bottom-right { content: \"Page \" counter(page) \" of \" counter(pages); font: 8pt 'Segoe UI', Arial, sans-serif; color: #666; }\n"
+      << "}\n@media print { body { padding: 0; } }\n"
+      // headless printing drops backgrounds unless asked to keep them
+      << "* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n</style>\n";
 }
 
 std::string csvField(std::string_view value) {
@@ -286,19 +304,23 @@ std::string exportHtml(const Checklist &checklist, const HtmlOptions &options) {
   } else {
     out << options.customHead;
   }
+  if (options.pageHeaderFooter)
+    renderPageBoxes(out, options);
   out << "<div class='metadata'>";
   out << "<div class='metadata-item'><span class='metadata-label'>📄 Document:</span> " << htmlEscape(options.documentName) << "</div>";
-  if (!checklist.user.empty())
+  if (!checklist.user.empty() && !options.hideWorkInfo)
     out << "<div class='metadata-item'><span class='metadata-label'>👤 Technician:</span> " << htmlEscape(checklist.user) << "</div>";
   if (!checklist.timestamp.empty())
-    out << "<div class='metadata-item'><span class='metadata-label'>📅 Date:</span> " << htmlEscape(checklist.timestamp) << "</div>";
-  out << "<div class='metadata-item'><span class='metadata-label'>⏱️ Total Time:</span> " << std::format("{:.2f}", totalHours(checklist)) << " hours</div>";
+    out << "<div class='metadata-item'><span class='metadata-label'>📅 Date:</span> "
+        << htmlEscape(options.hideWorkInfo ? checklist.timestamp.substr(0, 10) : checklist.timestamp) << "</div>";
+  if (!options.hideWorkInfo)
+    out << "<div class='metadata-item'><span class='metadata-label'>⏱️ Total Time:</span> " << std::format("{:.2f}", totalHours(checklist)) << " hours</div>";
   out << "<div class='metadata-item'><span class='metadata-label'>Versions</span> App: " << htmlEscape(options.appVersion)
       << " | Checklist: " << htmlEscape(checklist.version) << "</div>";
   out << "</div>\n";
   for (const auto &section : checklist.sections)
     if (section.finished || options.includeUnfinished)
-      renderSection(out, section);
+      renderSection(out, section, options.hideWorkInfo);
   out << "<div class='footer'><p>" << htmlEscape(options.footer) << "</p></div>\n</body>\n</html>\n";
   return out.str();
 }
@@ -328,6 +350,35 @@ std::string exportCsv(const Checklist &checklist, std::string_view documentPath)
     }
   }
   return out.str();
+}
+
+std::string cssString(std::string_view text) {
+  std::string out = "\"";
+  for (const char c : text) {
+    if (c == '"' || c == '\\')
+      out += '\\';
+    if (c == '\n' || c == '\r') {
+      out += "\\A ";
+      continue;
+    }
+    if (c == '<') {
+      out += "\\3C "; // never close the surrounding <style> element
+      continue;
+    }
+    out += c;
+  }
+  return out + "\"";
+}
+
+Checklist emailSubset(const Checklist &checklist) {
+  Checklist copy;
+  copy.version = checklist.version;
+  copy.user = checklist.user;
+  copy.timestamp = checklist.timestamp;
+  for (const auto &section : checklist.sections)
+    if (section.finished && section.emailExport)
+      copy.sections.push_back(section);
+  return copy;
 }
 
 Checklist recordSubset(const Checklist &checklist, const std::vector<std::string> &sectionNames) {

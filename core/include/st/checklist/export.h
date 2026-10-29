@@ -39,6 +39,11 @@ struct HtmlOptions {
   std::string customHead;
   /// Export all sections instead of finished ones only.
   bool includeUnfinished = false;
+  /// Leave out working times and user names (record for customers).
+  bool hideWorkInfo = false;
+  /// Page header (document name, title) and footer (footer text, "Page x of y") on
+  /// every printed page. Rendered by Chromium based browsers (PDF export).
+  bool pageHeaderFooter = false;
 };
 
 /// Service record as a stand-alone HTML page (printable, A4).
@@ -50,5 +55,12 @@ std::string exportCsv(const Checklist &checklist, std::string_view documentPath)
 /// Copy of the checklist that contains only `sectionNames` in the given order,
 /// all marked as finished (used for "Record erstellen").
 Checklist recordSubset(const Checklist &checklist, const std::vector<std::string> &sectionNames);
+
+/// Finished sections that may appear in the e-mail export (Section::emailExport), in
+/// checklist order (used for "E-Mail erstellen").
+Checklist emailSubset(const Checklist &checklist);
+
+/// CSS string literal (quotes included) for `content:` properties.
+std::string cssString(std::string_view text);
 
 } // namespace st::checklist

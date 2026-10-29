@@ -174,3 +174,48 @@ TEST_CASE("table rows follow template changes") {
   CHECK(std::get<Combo>(t.rows[0].tasks[3].value).options == std::vector<std::string>{"a"});
   CHECK(std::get<Combo>(t.rows[0].tasks[3].value).selected.empty());
 }
+
+TEST_CASE("html export for customers hides working times and names") {
+  Checklist c = fixture();
+  c.user = "ajahraus";
+  c.timestamp = "2026-03-15 10:00:00";
+  c.sections[0].user = "mmuster";
+  c.sections[0].timestamp = "2026-03-14 09:30:00";
+  HtmlOptions options;
+  options.documentName = "R.pdf";
+  const std::string normal = exportHtml(c, options);
+  CHECK(normal.find("mmuster") != std::string::npos);
+  CHECK(normal.find("Total Time") != std::string::npos);
+  CHECK(normal.find("@bottom-right") == std::string::npos);
+
+  options.hideWorkInfo = true;
+  options.pageHeaderFooter = true;
+  const std::string html = exportHtml(c, options);
+  CHECK(html.find("mmuster") == std::string::npos);
+  CHECK(html.find("ajahraus") == std::string::npos);
+  CHECK(html.find("Time:") == std::string::npos);
+  CHECK(html.find("Total Time") == std::string::npos);
+  CHECK(html.find("09:30") == std::string::npos);
+  CHECK(html.find("2026-03-14") != std::string::npos); // the date stays
+  CHECK(html.find("counter(pages)") != std::string::npos);
+  CHECK(html.find("@top-left { content: \"R.pdf\"") != std::string::npos);
+}
+
+TEST_CASE("css strings are escaped") {
+  CHECK(cssString("a\"b\\c") == "\"a\\\"b\\\\c\"");
+  CHECK(cssString("x\ny") == "\"x\\A y\"");
+  CHECK(cssString("</style>") == "\"\\3C /style>\"");
+}
+
+TEST_CASE("e-mail subset: finished sections that are allowed, in checklist order") {
+  Checklist c = fixture();
+  for (auto &s : c.sections)
+    s.finished = true;
+  CHECK(emailSubset(c).sections.size() == c.sections.size());
+  c.sections[0].emailExport = false;
+  const Checklist mail = emailSubset(c);
+  REQUIRE(mail.sections.size() == c.sections.size() - 1);
+  CHECK(mail.sections[0].name == c.sections[1].name);
+  c.sections[1].finished = false;
+  CHECK(emailSubset(c).sections.size() == c.sections.size() - 2);
+}
