@@ -47,7 +47,7 @@ TEST_CASE("record: browser command line") {
   CHECK(std::any_of(args.begin(), args.end(), [](const std::string &a) { return a.starts_with("--print-to-pdf="); }));
   CHECK(std::none_of(args.begin(), args.end(), [](const std::string &a) { return a.starts_with("--user-data-dir="); }));
 
-  CHECK(fileUrl("/tmp/Gerät.html") == "file:///tmp/Ger%C3%A4t.html");
+  CHECK(fileUrl(util::pathFromUtf8("/tmp/Ger\xC3\xA4t.html")) == "file:///tmp/Ger%C3%A4t.html"); // "Gerät", bytes explicit for MSVC
   CHECK(fileUrl("C:\\x\\y.html") == "file:///C:/x/y.html");
   CHECK(fileUrl("\\\\server\\share\\y.html") == "file://server/share/y.html");
 
