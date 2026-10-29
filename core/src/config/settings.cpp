@@ -32,7 +32,17 @@ util::Result<Settings> loadSettings(const util::fs::path &file) {
     read(*it, "externFile", p.externFile);
     read(*it, "ordersFile", p.ordersFile);
     read(*it, "crashDir", p.crashDir);
+    read(*it, "translationsFile", p.translationsFile);
   }
+  if (const auto it = j->find("translator"); it != j->end() && it->is_object()) {
+    auto &t = settings.translator;
+    read(*it, "url", t.url);
+    read(*it, "apiKey", t.apiKey);
+    read(*it, "source", t.source);
+    read(*it, "target", t.target);
+  }
+  read(*j, "translatorTimeoutMs", settings.translatorTimeoutMs);
+  read(*j, "pdfBrowser", settings.pdfBrowser);
   read(*j, "updateUrl", settings.updateUrl);
   read(*j, "updateInstaller", settings.updateInstaller);
   read(*j, "bootstrapAdmin", settings.bootstrapAdmin);
@@ -58,6 +68,7 @@ util::Status saveSettings(const util::fs::path &file, const Settings &settings) 
       {"externFile", p.externFile},
       {"ordersFile", p.ordersFile},
       {"crashDir", p.crashDir},
+      {"translationsFile", p.translationsFile},
   };
   j["updateUrl"] = settings.updateUrl;
   j["updateInstaller"] = settings.updateInstaller;
@@ -67,6 +78,10 @@ util::Status saveSettings(const util::fs::path &file, const Settings &settings) 
   j["knownCustomers"] = settings.knownCustomers;
   j["recordTitle"] = settings.recordTitle;
   j["recordFooter"] = settings.recordFooter;
+  const auto &t = settings.translator;
+  j["translator"] = {{"url", t.url}, {"apiKey", t.apiKey}, {"source", t.source}, {"target", t.target}};
+  j["translatorTimeoutMs"] = settings.translatorTimeoutMs;
+  j["pdfBrowser"] = settings.pdfBrowser;
   return util::json::save(file, j);
 }
 
