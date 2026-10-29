@@ -55,3 +55,6 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
     - Libretranslate lokal laufend
     - Alle übersetzten sätze werden in einer cache datei für alle zugänglich gespeichert.
         - Wenn der satz dort schon übersetzt wurde, nimm diese übersetzung. somit kann ich händisch änderungen vornehmen falls notwendig.
+- Tabellenformatierungen in Checklisten sollen in der ini file gespeichert werden.
+    - wichtig ist, dass nur der tabellenname übereinstimmen muss und die ini datei nicht für jede checkliste zugemüllt wird.
+    - Füge es als einstellung hinzu, ob tabelleninformationen gespeichert werden oder nicht mit default auf aus
