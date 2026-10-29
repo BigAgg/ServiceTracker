@@ -38,3 +38,20 @@ Zudem werden Ersatzteilversendungen darüber gesteuert.
 - In den versand gestellt und datum eingetragen
 - Versendet und Rechnungsnummer sowie versanddatum werden eingetragen
 - Bestellung wird abgeschlossen
+
+## Neuimplementierungen:
+
+- Sectionen / arbeitsgänge in checklisten sollen die option bekommen, ob sie auf einem e-mail export auftauchen dürfen oder nicht.
+    - E-Mail export siehe unteren Punkt "Ein neuer Button "E-Mail erstellen""
+- Bei "Record erstellen" soll es eine option geben "In englisch übersetzen"
+    - Das Übersetzen soll mit einer lokalen instanz von libretranslate funktionieren
+    - falls möglich, soll der record direkt als pdf erstellt werden mit kopf und fußzeile mit seitenzahlen
+- Ein neuer Button "E-Mail erstellen"
+    - Der Button erstellt einen von deutsch auf englisch übersetzten record ohne die bearbeitungszeiten und ohne die namen der bearbeiter als pdf.
+    - Der Button öffnet per mailto: eine vordefinierte e-mail
+        - als anhang wird der zuvor erstellte record gesetzt und aus dem aktuellen Service odner (Service_yyyy.mm.dd) die PDF datei im Unterordner "EV-Plate". Dabei ist wichtig, dass im namen der Datei "Reader Evaluation" enthalten ist.
+        - Ist die Datei nicht vorhanden, wird sie einfach nicht mit angehangen.
+- Übersetzer vorgaben:
+    - Libretranslate lokal laufend
+    - Alle übersetzten sätze werden in einer cache datei für alle zugänglich gespeichert.
+        - Wenn der satz dort schon übersetzt wurde, nimm diese übersetzung. somit kann ich händisch änderungen vornehmen falls notwendig.
